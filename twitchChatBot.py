@@ -28,6 +28,7 @@ NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/fb2k_nowPlaying_simple.txt'
 COOLDOWN_PER_USER = 5
 COOLDOWN_GENERAL = 4
 BOT_LIST = ["kazukimouto", "nightbot", "brettbot"]
+LOW_WIDTH_SPACE = u"\u200B"
 cooldown_time = local_time()
 last_use = {}
 
@@ -93,7 +94,8 @@ def db_update(data):
     """ Update the last time somebody was seen talking """
     time_now = local_time().strftime('%b %d, %Y at %H:%M %Z')
     
-    msg = u'{nick} was last seen saying \'{msg}\' on {date}'.format(nick=data['nick'], 
+    broken_nick = data['nick'][:1] + LOW_WIDTH_SPACE + data['nick'][1:]
+    msg = u'{nick} was last seen saying \'{msg}\' on {date}'.format(nick=broken_nick, 
                                                                     msg=data['message'], 
                                                                     date=time_now)
 
