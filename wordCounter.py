@@ -41,7 +41,7 @@ COOLDOWN_TIME = local_time()
 FILE_PATH = hexchat.get_info("configdir") + "/wordfreq.pickle"
 STOP_WORD_PATH = hexchat.get_info("configdir") + "/stop_words.csv"
 STOP_WORDS = load_stop_words(STOP_WORD_PATH)
-LOW_WIDTH_SPACE = u"\u200B"
+LOW_WIDTH_SPACE = u"\u200B" # insert into nicknames to avoid highlighting user extra times
 REGEX = re.compile(r'[\s]+')
 
 if os.path.isfile(FILE_PATH):
@@ -72,6 +72,14 @@ def clearstop_cb(word, word_eol, userdata):
     print "Deleted stop words from word count dictionary"
     return hexchat.EAT_ALL
 
+def break_nickname(nick):
+    """ Insert zero-width spaces into name to avoid extra IRC highlights """
+    new_nick = u""
+    for c in nick:
+        new_nick += c
+        new_nick += LOW_WIDTH_SPACE
+    return new_nick
+
 def wc_update(data):
     """ Update count of words said by user """
     nick = data['nick']
@@ -84,7 +92,7 @@ def wc_update(data):
     for word in freq:
         if word.lower() in STOP_WORDS:
             continue
-        elif word != " ":
+        elif word != " " and not word.startswith("!"):
             word_count[nick][word.lower()] += freq[word]
 
 def user_top_words(nick):
@@ -93,7 +101,7 @@ def user_top_words(nick):
         return
 
     top_words = word_count[nick.lower()].most_common(10)
-    broken_nick = nick[:1] + LOW_WIDTH_SPACE + nick[1:]
+    broken_nick = break_nickname(nick)
 
     report = broken_nick + "'s top words: "
     for word, count in top_words:
@@ -118,7 +126,7 @@ def word_top_users(word):
     top_users = user_list.most_common(10)
     report = "Top users of '" + word.lower() + "': "
     for user, count in top_users:
-        broken_nick = user[:1] + LOW_WIDTH_SPACE + user[1:]
+        broken_nick = break_nickname(nick)
         partial = "{0} ({1}), ".format(broken_nick, count)
         report += partial
     hexchat.command("say " + report)

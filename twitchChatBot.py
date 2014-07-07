@@ -28,7 +28,7 @@ NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/fb2k_nowPlaying_simple.txt'
 COOLDOWN_PER_USER = 5
 COOLDOWN_GENERAL = 4
 BOT_LIST = ["kazukimouto", "nightbot", "brettbot"]
-LOW_WIDTH_SPACE = u"\u200B"
+LOW_WIDTH_SPACE = u"\u200B" # insert into nicknames to avoid highlighting user extra times
 cooldown_time = local_time()
 last_use = {}
 
@@ -76,6 +76,14 @@ def on_cooldown(nick):
         flood_update(nick)
         return False
 
+def break_nickname(nick):
+    """ Insert zero-width spaces into name to avoid extra IRC highlights """
+    new_nick = u""
+    for c in nick:
+        new_nick += c
+        new_nick += LOW_WIDTH_SPACE
+    return new_nick
+
 # database setup
 db_path = hexchat.get_info("configdir") + "/seen.db"
 db_connection = sqlite3.connect(db_path)
@@ -94,7 +102,7 @@ def db_update(data):
     """ Update the last time somebody was seen talking """
     time_now = local_time().strftime('%b %d, %Y at %H:%M %Z')
     
-    broken_nick = data['nick'][:1] + LOW_WIDTH_SPACE + data['nick'][1:]
+    broken_nick = break_nickname(data['nick'])
     msg = u'{nick} was last seen saying \'{msg}\' on {date}'.format(nick=broken_nick, 
                                                                     msg=data['message'], 
                                                                     date=time_now)
