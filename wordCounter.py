@@ -3,9 +3,10 @@ __module_version__ = "1.0"
 __module_description__ = "Records the times a user has said a word"
 
 from collections import Counter
+import cPickle as pickle
+import csv
 import datetime
 import string
-import pickle
 import os
 import sys
 import re
@@ -26,11 +27,22 @@ def local_time():
     loc_dt = datetime.datetime.now(pytz.timezone('US/Pacific'))
     return loc_dt
 
+def load_stop_words(file_path):
+    stop_list = []
+    with open(file_path, 'rb') as file:
+        reader = csv.reader(file, delimiter=",")
+        for row in reader:
+            stop_list += row
+    return set(stop_list)
+
 # setup and constants
 COOLDOWN = 5
 COOLDOWN_TIME = local_time()
 FILE_PATH = hexchat.get_info("configdir") + "/wordfreq.pickle"
-regex = re.compile(r'[%s\s]+' % re.escape(string.punctuation))
+STOP_WORD_PATH = hexchat.get_info("configdir") + "/stop_words.csv"
+STOP_WORDS = load_stop_words(STOP_WORD_PATH)
+LOW_WIDTH_SPACE = u"\u200B"
+REGEX = re.compile(r'[\s]+')
 
 if os.path.isfile(FILE_PATH):
     word_count = pickle.load(open(FILE_PATH, "rb"))
@@ -53,31 +65,37 @@ def cooldown_update():
 def unload_cb(userdata):
     pickle.dump(word_count, open(FILE_PATH, "wb"))
 
+def clearstop_cb(word, word_eol, userdata):
+    for nick in word_count:
+        for stop_word in STOP_WORDS:
+            del word_count[nick][stop_word]
+    print "Deleted stop words from word count dictionary"
+    return hexchat.EAT_ALL
+
 def wc_update(data):
     """ Update count of words said by user """
     nick = data['nick']
-    result = filter(lambda x: len(x.decode('utf-8')) > 2, regex.split(data['message']))
+    result = filter(lambda x: len(x.decode('utf-8')) > 2, REGEX.split(data['message']))
     freq = Counter(result)
 
     if nick not in word_count:
         word_count[nick] = Counter()
 
     for word in freq:
-        if word != " ":
-            word_count[nick][word] += freq[word]
-
-def user_word_count(nick, word):
-    """ Return the number of times user has said word """
-    cooldown_update()
+        if word.lower() in STOP_WORDS:
+            continue
+        elif word != " ":
+            word_count[nick][word.lower()] += freq[word]
 
 def user_top_words(nick):
     """ Return the top 10 words a user has said """
-    if nick not in word_count:
+    if nick.lower() not in word_count:
         return
 
-    top_words = word_count[nick].most_common(10)
+    top_words = word_count[nick.lower()].most_common(10)
+    broken_nick = nick[:1] + LOW_WIDTH_SPACE + nick[1:]
 
-    report = nick + "'s top words: "
+    report = broken_nick + "'s top words: "
     for word, count in top_words:
         partial = "'{0}' ({1}), ".format(word, count)
         report += partial
@@ -94,13 +112,14 @@ def word_top_users(word):
 
     user_list = Counter()
     for nick in word_count:
-        if word in word_count[nick]:
-            user_list[nick] = word_count[nick][word]
+        if word.lower() in word_count[nick]:
+            user_list[nick] = word_count[nick][word.lower()]
 
     top_users = user_list.most_common(10)
-    report = "Top users of '" + word + "': "
+    report = "Top users of '" + word.lower() + "': "
     for user, count in top_users:
-        partial = "{0} ({1}), ".format(user, count)
+        broken_nick = user[:1] + LOW_WIDTH_SPACE + user[1:]
+        partial = "{0} ({1}), ".format(broken_nick, count)
         report += partial
     hexchat.command("say " + report)
 
@@ -148,5 +167,6 @@ def route(data):
 
 hexchat.hook_server('PRIVMSG', parse)
 hexchat.hook_unload(unload_cb)
+hexchat.hook_command("CLEARSTOP", clearstop_cb, help="/CLEARSTOP Removes stop words from the dictionary")
 
 hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been loaded.")
