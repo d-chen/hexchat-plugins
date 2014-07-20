@@ -36,12 +36,12 @@ def load_stop_words(file_path):
     return set(stop_list)
 
 # setup and constants
-COOLDOWN = 5
+COOLDOWN = 6
 COOLDOWN_TIME = local_time()
 FILE_PATH = hexchat.get_info("configdir") + "/wordfreq.pickle"
 STOP_WORD_PATH = hexchat.get_info("configdir") + "/stop_words.csv"
 STOP_WORDS = load_stop_words(STOP_WORD_PATH)
-LOW_WIDTH_SPACE = u"\u200B" # insert into nicknames to avoid highlighting user extra times
+LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
 REGEX = re.compile(r'[\s]+')
 
 if os.path.isfile(FILE_PATH):
@@ -75,9 +75,8 @@ def clearstop_cb(word, word_eol, userdata):
 def break_nickname(nick):
     """ Insert zero-width spaces into name to avoid extra IRC highlights """
     new_nick = u""
-    for c in nick:
-        new_nick += c
-        new_nick += LOW_WIDTH_SPACE
+    length = len(nick)
+    new_nick = nick[0] + LOW_WIDTH_SPACE + nick[1:(length - 1)] + LOW_WIDTH_SPACE + nick[(length - 1):]
     return new_nick
 
 def wc_update(data):
@@ -92,22 +91,23 @@ def wc_update(data):
     for word in freq:
         if word.lower() in STOP_WORDS:
             continue
-        elif word != " " and not word.startswith("!"):
+        elif word != " " and not word.startswith("!") and not word.startswith("http"):
             word_count[nick][word.lower()] += freq[word]
 
-def user_top_words(nick):
-    """ Return the top 10 words a user has said """
+def user_top_words(caller, nick):
+    """ Return the top words a user has said """
     if nick.lower() not in word_count:
         return
 
     top_words = word_count[nick.lower()].most_common(10)
     broken_nick = break_nickname(nick)
 
-    report = broken_nick + "'s top words: "
+    report = "This user's top words: "
     for word, count in top_words:
+        #broken_word = break_nickname(word)
         partial = "'{0}' ({1}), ".format(word, count)
         report += partial
-    hexchat.command("say " + report)
+    hexchat.command("say {0} -> ".format(caller) + report)
 
     cooldown_update()
 
@@ -123,10 +123,10 @@ def word_top_users(word):
         if word.lower() in word_count[nick]:
             user_list[nick] = word_count[nick][word.lower()]
 
-    top_users = user_list.most_common(10)
+    top_users = user_list.most_common(8)
     report = "Top users of '" + word.lower() + "': "
     for user, count in top_users:
-        broken_nick = break_nickname(nick)
+        broken_nick = break_nickname(user)
         partial = "{0} ({1}), ".format(broken_nick, count)
         report += partial
     hexchat.command("say " + report)
@@ -148,7 +148,8 @@ def parse(word, word_eol, userdata):
         "channel" : str_data[3].decode('ascii').encode('utf-8'),
         "message" : str_data[4][1:].encode('utf-8')
         }
-    wc_update(data)
+    if not data['message'].startswith("!"):
+        wc_update(data)
     if data['message'].startswith("!") and not on_cooldown():
         route(data)
 
@@ -161,14 +162,11 @@ def route(data):
         return
     elif length == 3:
         if cmd_data[1] == "topwords":
-            user_top_words(cmd_data[2])
-        if cmd_data[1] == "topusers":
+            user_top_words(data['nick'], cmd_data[2])
+        elif cmd_data[1] == "topusers":
             word_top_users(cmd_data[2])
         else:
             wc_print_usage()
-    elif length == 4 and cmd_data[1] == "userfreq":
-        #user_own_word_count(cmd_data[2], cmd_data[3])
-        return
     else:
         wc_print_usage()
 

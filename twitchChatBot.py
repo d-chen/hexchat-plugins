@@ -25,10 +25,10 @@ def local_time():
     return loc_dt
 
 NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/fb2k_nowPlaying_simple.txt'
-COOLDOWN_PER_USER = 5
-COOLDOWN_GENERAL = 4
-BOT_LIST = ["kazukimouto", "nightbot", "brettbot"]
-LOW_WIDTH_SPACE = u"\u200B" # insert into nicknames to avoid highlighting user extra times
+COOLDOWN_PER_USER = 8
+COOLDOWN_GENERAL = 6
+BOT_LIST = ["kazukimouto", "nightbot", "brettbot", "rise_bot"]
+LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
 cooldown_time = local_time()
 last_use = {}
 
@@ -101,23 +101,21 @@ def db_unload(userdata):
 def db_update(data):
     """ Update the last time somebody was seen talking """
     time_now = local_time().strftime('%b %d, %Y at %H:%M %Z')
-    
-    broken_nick = break_nickname(data['nick'])
-    msg = u'{nick} was last seen saying \'{msg}\' on {date}'.format(nick=broken_nick, 
-                                                                    msg=data['message'], 
-                                                                    date=time_now)
+
+    msg = u'This user was last seen saying \'{msg}\' on {date}'.format(msg=data['message'], 
+                                                                       date=time_now)
 
     sql_query = u"REPLACE INTO seen (nick, message) VALUES (?, ?)"
     db_cursor.execute(sql_query, (data['nick'], msg))
 
-def seen(target):
+def seen(searcher, target):
     """ Report the last time somebody was seen talking """
     target_str = target.lower()
     sql_query = "SELECT message FROM seen WHERE nick = ?"
     db_cursor.execute(sql_query, (target_str,)) # need that comma to make 1-arg tuples
     row = db_cursor.fetchone()
     if row:
-        hexchat.command("say " + row[0])
+        hexchat.command("say {0} -> ".format(searcher) + row[0])
     else:
         hexchat.command("say Could not find records of " + target)
 
@@ -161,8 +159,9 @@ def route(data):
             return
         elif length == 2:
             if command_data[1] in BOT_LIST:
-                hexchat.command("say " + data['nick'] + ": Quit that shit.")
-            seen(command_data[1])
+                hexchat.command("say " + data['nick'] + " -> Quit that shit.")
+                return
+            seen(data['nick'], command_data[1])
         else:
             hexchat.command("say Usage: !seen <nickname>")
 
