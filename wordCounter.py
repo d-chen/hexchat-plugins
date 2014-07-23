@@ -118,6 +118,11 @@ def word_top_users(word):
         cooldown_update()
         return
 
+    if word in STOP_WORDS or word.startswith("!"):
+        hexchat.command("say '" + word + "' is excluded for being too common or part of another chat command.")
+        cooldown_update()
+        return
+
     user_list = Counter()
     for nick in word_count:
         if word.lower() in word_count[nick]:
