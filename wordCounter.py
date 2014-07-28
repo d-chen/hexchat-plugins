@@ -1,5 +1,5 @@
 ﻿__module_name__ = "User Word Counter"
-__module_version__ = "1.0"
+__module_version__ = "1.1"
 __module_description__ = "Records the times a user has said a word"
 
 from collections import Counter
@@ -70,10 +70,13 @@ def cooldown_update():
     COOLDOWN_TIME = time_now + datetime.timedelta(seconds=COOLDOWN)
 
 def unload_cb(userdata):
+    """ Pickle the word counters when plugin is unloaded """
     pickle.dump(word_count, open(FILE_PATH, "wb"))
     pickle.dump(total_word_count, open(TOTAL_COUNT_PATH, "wb"))
+    hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been unloaded.")
 
 def clearstop_cb(word, word_eol, userdata):
+    """ Remove unwanted words from dictionaries """
     for nick in word_count:
         for stop_word in STOP_WORDS:
             del word_count[nick][stop_word]
@@ -122,7 +125,7 @@ def user_top_words(caller, nick):
         return
 
     top_words = word_count[nick.lower()].most_common(10)
-    msg_command = "say {0} -> ".format(caller) + "This user's top words: " + report_list(top_words)
+    msg_command = "say {0} -> This user's top words: ".format(caller) + report_list(top_words)
     hexchat.command(msg_command)
     cooldown_update()
 
