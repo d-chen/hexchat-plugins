@@ -38,8 +38,10 @@ def load_stop_words(file_path):
 # setup and constants
 COOLDOWN = 6
 COOLDOWN_TIME = local_time()
-FILE_PATH = hexchat.get_info("configdir") + "/wordfreq.pickle"
-STOP_WORD_PATH = hexchat.get_info("configdir") + "/stop_words.csv"
+DIR_PATH = hexchat.get_info("configdir")
+FILE_PATH = DIR_PATH + "/wordfreq.pickle"
+TOTAL_COUNT_PATH = DIR_PATH + "/totalwordfreq.pickle"
+STOP_WORD_PATH = DIR_PATH + "/stop_words.csv"
 STOP_WORDS = load_stop_words(STOP_WORD_PATH)
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
 REGEX = re.compile(r'[\s]+')
@@ -48,6 +50,11 @@ if os.path.isfile(FILE_PATH):
     word_count = pickle.load(open(FILE_PATH, "rb"))
 else:
     word_count = {}
+
+if os.path.isfile(TOTAL_COUNT_PATH):
+    total_word_count = pickle.load(open(TOTAL_COUNT_PATH, "rb"))
+else:
+    total_word_count = Counter()
 
 def on_cooldown():
     """ Return true if script has made a response recently """
@@ -64,12 +71,17 @@ def cooldown_update():
 
 def unload_cb(userdata):
     pickle.dump(word_count, open(FILE_PATH, "wb"))
+    pickle.dump(total_word_count, open(TOTAL_COUNT_PATH, "wb"))
 
 def clearstop_cb(word, word_eol, userdata):
     for nick in word_count:
         for stop_word in STOP_WORDS:
             del word_count[nick][stop_word]
-    print "Deleted stop words from word count dictionary"
+
+    for stop_word in STOP_WORDS:
+        del total_word_count[stop_word]
+
+    print "Deleted stop words from word count dictionaries"
     return hexchat.EAT_ALL
 
 def break_nickname(nick):
@@ -93,6 +105,16 @@ def wc_update(data):
             continue
         elif word != " " and not word.startswith("!") and not word.startswith("http"):
             word_count[nick][word.lower()] += freq[word]
+            total_word_count[word.lower()] += freq[word]
+
+def report_list(items):
+    """ Generate message based on a list of items """
+    report = ""
+    for item, count in items:
+        broken_text = break_nickname(item)
+        partial = "{0} ({1}), ".format(broken_text, count)
+        report += partial
+    return report
 
 def user_top_words(caller, nick):
     """ Return the top words a user has said """
@@ -100,15 +122,8 @@ def user_top_words(caller, nick):
         return
 
     top_words = word_count[nick.lower()].most_common(10)
-    broken_nick = break_nickname(nick)
-
-    report = "This user's top words: "
-    for word, count in top_words:
-        #broken_word = break_nickname(word)
-        partial = "'{0}' ({1}), ".format(word, count)
-        report += partial
-    hexchat.command("say {0} -> ".format(caller) + report)
-
+    msg_command = "say {0} -> ".format(caller) + "This user's top words: " + report_list(top_words)
+    hexchat.command(msg_command)
     cooldown_update()
 
 def word_top_users(word):
@@ -129,18 +144,20 @@ def word_top_users(word):
             user_list[nick] = word_count[nick][word.lower()]
 
     top_users = user_list.most_common(8)
-    report = "Top users of '" + word.lower() + "': "
-    for user, count in top_users:
-        broken_nick = break_nickname(user)
-        partial = "{0} ({1}), ".format(broken_nick, count)
-        report += partial
-    hexchat.command("say " + report)
+    msg_command = "say Top users of '{0}': ".format(word.lower()) + report_list(top_users)
+    hexchat.command(msg_command)
+    cooldown_update()
 
+def most_spoken_words():
+    """ Return the top 10 words said by all users """
+    top_words = total_word_count.most_common(10)
+    msg_command = "say Top words recorded: " + report_list(top_words)
+    hexchat.command(msg_command)
     cooldown_update()
 
 def wc_print_usage():
     """ Print syntax for using !words commands """
-    hexchat.command("say " + "Usage: !words topwords NAME / !words topusers WORD")
+    hexchat.command("say " + "Usage: !words user <NAME> / !words word <WORD> / !words everyone")
     cooldown_update()
 
 def parse(word, word_eol, userdata):
@@ -165,10 +182,15 @@ def route(data):
 
     if cmd_data[0] != "!words":
         return
+    elif length == 2:
+        if cmd_data[1] == "everyone":
+            most_spoken_words()
+        else:
+            wc_print_usage()
     elif length == 3:
-        if cmd_data[1] == "topwords":
+        if cmd_data[1] == "user" or cmd_data[1] == "topwords":
             user_top_words(data['nick'], cmd_data[2])
-        elif cmd_data[1] == "topusers":
+        elif cmd_data[1] == "word" or cmd_data[1] == "topusers":
             word_top_users(cmd_data[2])
         else:
             wc_print_usage()
