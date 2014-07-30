@@ -110,12 +110,14 @@ def wc_update(data):
             word_count[nick][word.lower()] += freq[word]
             total_word_count[word.lower()] += freq[word]
 
-def report_list(items):
+def report_list(items, break_text):
     """ Generate message based on a list of items """
     report = ""
     for item, count in items:
-        broken_text = break_nickname(item)
-        partial = "{0} ({1}), ".format(broken_text, count)
+        text = item
+        if break_text:
+            text = break_nickname(item)
+        partial = "{0} ({1}), ".format(text, count)
         report += partial
     return report
 
@@ -125,7 +127,7 @@ def user_top_words(caller, nick):
         return
 
     top_words = word_count[nick.lower()].most_common(10)
-    msg_command = "say {0} -> This user's top words: ".format(caller) + report_list(top_words)
+    msg_command = "say {0} -> This user's top words: ".format(caller) + report_list(top_words, False)
     hexchat.command(msg_command)
     cooldown_update()
 
@@ -147,20 +149,20 @@ def word_top_users(word):
             user_list[nick] = word_count[nick][word.lower()]
 
     top_users = user_list.most_common(8)
-    msg_command = "say Top users of '{0}': ".format(word.lower()) + report_list(top_users)
+    msg_command = "say Top users of '{0}': ".format(word.lower()) + report_list(top_users, True)
     hexchat.command(msg_command)
     cooldown_update()
 
 def most_spoken_words():
     """ Return the top 10 words said by all users """
     top_words = total_word_count.most_common(10)
-    msg_command = "say Top words recorded: " + report_list(top_words)
+    msg_command = "say Top words recorded: " + report_list(top_words, False)
     hexchat.command(msg_command)
     cooldown_update()
 
 def wc_print_usage():
     """ Print syntax for using !words commands """
-    hexchat.command("say " + "Usage: !words user <NAME> / !words word <WORD> / !words everyone")
+    hexchat.command("say " + "Usage: !words user [NAME] / !words word [WORD] / !words everyone")
     cooldown_update()
 
 def parse(word, word_eol, userdata):
