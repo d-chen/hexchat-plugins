@@ -36,8 +36,8 @@ def load_stop_words(file_path):
     return set(stop_list)
 
 # setup and constants
-COOLDOWN = 6
-COOLDOWN_TIME = local_time()
+COOLDOWN = 10
+cooldown_time = local_time()
 DIR_PATH = hexchat.get_info("configdir")
 FILE_PATH = DIR_PATH + "/wordfreq.pickle"
 TOTAL_COUNT_PATH = DIR_PATH + "/totalwordfreq.pickle"
@@ -59,15 +59,16 @@ else:
 def on_cooldown():
     """ Return true if script has made a response recently """
     time_now = local_time()
-    if COOLDOWN_TIME > time_now:
+    if cooldown_time > time_now:
         return True
     else:
         return False
 
 def cooldown_update():
     """ Update earliest time a new command can be called """
+    global cooldown_time
     time_now = local_time()
-    COOLDOWN_TIME = time_now + datetime.timedelta(seconds=COOLDOWN)
+    cooldown_time = time_now + datetime.timedelta(seconds=COOLDOWN)
 
 def unload_cb(userdata):
     """ Pickle the word counters when plugin is unloaded """
@@ -85,6 +86,13 @@ def clearstop_cb(word, word_eol, userdata):
         del total_word_count[stop_word]
 
     print "Deleted stop words from word count dictionaries"
+    return hexchat.EAT_ALL
+
+def deleteuser_cb(word, word_eol, userdata):
+    """ Delete user from dictionary """
+    nick = word_eol[1]
+    del word_count[nick]
+    print "Deleted {0} from word count dictionary".format(nick)
     return hexchat.EAT_ALL
 
 def break_nickname(nick):
@@ -206,5 +214,6 @@ def route(data):
 hexchat.hook_server('PRIVMSG', parse)
 hexchat.hook_unload(unload_cb)
 hexchat.hook_command("CLEARSTOP", clearstop_cb, help="/CLEARSTOP Removes stop words from the dictionary")
+hexchat.hook_command("DELUSER", deleteuser_cb, help="/DELUSER [name] Removes user from the dictionary")
 
 hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been loaded.")

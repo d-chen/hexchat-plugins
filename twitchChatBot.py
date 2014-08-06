@@ -25,8 +25,8 @@ def local_time():
     return loc_dt
 
 NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/fb2k_nowPlaying_simple.txt'
-COOLDOWN_PER_USER = 8
-COOLDOWN_GENERAL = 6
+COOLDOWN_PER_USER = 15
+COOLDOWN_GENERAL = 8
 BOT_LIST = ["kazukimouto", "nightbot", "brettbot", "rise_bot"]
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
 cooldown_time = local_time()
@@ -44,6 +44,7 @@ def japan_time():
 
 def flood_update(nick):
     """ Update earliest time a new command can be called """
+    global cooldown_time
     time_now = local_time()
     cooldown_time = time_now + datetime.timedelta(seconds=COOLDOWN_GENERAL)
     last_use[nick] = time_now + datetime.timedelta(seconds=COOLDOWN_PER_USER)
