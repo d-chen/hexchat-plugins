@@ -1,5 +1,5 @@
 __module_name__ = "TwitchTV Chat Bot"
-__module_version__ = "1.0"
+__module_version__ = "1.1"
 __module_description__ = "Miscellaneous chat bot features"
 
 import codecs
@@ -10,6 +10,7 @@ import sys
 
 import hexchat
 import pytz
+import requests
 
 # HACK: Set default encoding to UTF-8
 if (sys.getdefaultencoding() != "utf-8"):
@@ -25,17 +26,32 @@ def local_time():
     return loc_dt
 
 NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/fb2k_nowPlaying_simple.txt'
-COOLDOWN_PER_USER = 15
+COOLDOWN_PER_USER = 12
 COOLDOWN_GENERAL = 8
-BOT_LIST = ["kazukimouto", "nightbot", "brettbot", "rise_bot"]
+BOT_LIST = ["kazukimouto", "nightbot", "brettbot", "rise_bot", "dj_jm09", "palebot"]
+COOLDOWN_IMMUNE = ["low_tier_bot", "saprol"] # debugging purposes
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
 cooldown_time = local_time()
 last_use = {}
 
-def japan_time():
-    """ Sends current time of Japan to chat """
+def utc_time():
+    """ Return current time in UTC """
     utc_dt = datetime.datetime.utcnow()
     utc_dt = utc_dt.replace(tzinfo=pytz.timezone('UTC'))
+    return utc_dt
+    
+def pacific_time():
+    """ Sends current time of Pacific time zone to chat """
+    utc_dt = utc_time()
+    
+    pst_tz = pytz.timezone('Canada/Pacific')
+    pst_dt = pst_tz.normalize(utc_dt.astimezone(pst_tz))
+    time_fmt = "%H:%M %Z. %B %d, %Y"
+    hexchat.command("say Local time in Vancouver: " + pst_dt.strftime(time_fmt))
+
+def japan_time():
+    """ Sends current time of Japan to chat """
+    utc_dt = utc_time()
 
     jpn_tz = pytz.timezone('Japan')
     jpn_dt = jpn_tz.normalize(utc_dt.astimezone(jpn_tz))
@@ -60,6 +76,7 @@ def on_global_cooldown():
 def on_cooldown(nick):
     """ Return true if a command has been used too recently """
     time_now = local_time()
+
     if cooldown_time > time_now:
         print "Global cooldown is still up."
         return True
@@ -129,6 +146,22 @@ def now_playing():
     except IOError as error:
         print 'ERROR: Could not read ' + NOW_PLAYING_FILE
 
+def get_channel_views(channel):
+    url = 'https://api.twitch.tv/kraken/streams/{0}'.format(channel[1:]) # channel starts with hash
+    headers = {'accept': 'application/vnd.twitchtv.v3+json'}
+    resp = requests.get(url, headers=headers)
+    
+    if not resp.status_code == 200:
+        hexchat.command("say Twitch API is not currently available.")
+        return
+        
+    resp_json = resp.json()
+    if resp_json['stream']:
+        viewers = resp_json['stream']['viewers']
+        hexchat.command("say There are currently {0} viewers in this channel.".format(viewers))
+    else:
+        hexchat.command("say This stream is currently offline.")
+
 def parse(word, word_eol, userdata):
     """ Prepare messages for processing """
     str_data = word_eol[0].replace("!"," ", 1).split(None,4)    
@@ -149,28 +182,42 @@ def route(data):
     command_data = data['message'].split()
     length = len(command_data)
     
-    if command_data[0] == '!sapmusic':
-        if on_cooldown(data['nick']):
-            return
-        else:
-            now_playing()
+    if command_data[0] == '!ltb':
+        if not on_cooldown(data['nick']):
+            hexchat.command("say " + data['nick'] + " -> Current active commands: !viewers !seen !jptime !wctime !sapmusic")
+                
+    if command_data[0] == '!words':
+        if not on_cooldown(data['nick']):
+            hexchat.command('say !words is disabled cause Hexchat RAM usage increased tenfold BibleThump.'
+                            ' Other commands available by using !ltb')
 
     if command_data[0] == '!seen':
         if on_cooldown(data['nick']):
             return
         elif length == 2:
-            if command_data[1] in BOT_LIST:
-                hexchat.command("say " + data['nick'] + " -> Quit that shit.")
+            if command_data[1].lower() in BOT_LIST:
+                hexchat.command("say " + data['nick'] + " -> No messing with other bots.")
                 return
             seen(data['nick'], command_data[1])
         else:
-            hexchat.command("say Usage: !seen <nickname>")
+            hexchat.command("say Usage: !seen NICKNAME")
 
+    if command_data[0] == "!wctime":
+        if not on_cooldown(data['nick']):
+            pacific_time()
+            
     if command_data[0] == '!jptime':
-        if on_cooldown(data['nick']):
-            return
-        else:
+        if not on_cooldown(data['nick']):
             japan_time()
+
+    if command_data[0] == '!sapmusic':
+        if not on_cooldown(data['nick']):
+            now_playing()
+            
+    if command_data[0] == '!viewers':
+        if not on_cooldown(data['nick']):
+            get_channel_views(data['channel'])
+            
 
 
 hexchat.hook_unload(db_unload)
