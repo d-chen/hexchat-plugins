@@ -1,5 +1,5 @@
-## Hexchat Python Plugins for TwitchTV Chat
+###Python Plugins for Hexchat http://hexchat.github.io/
 
-Requirements:
+*Plugin Requirements:*
 * PYTZ        http://pytz.sourceforge.net/
 * Requests    http://docs.python-requests.org/en/latest/
