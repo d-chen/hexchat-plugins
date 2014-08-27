@@ -77,6 +77,9 @@ def on_cooldown(nick):
     """ Return true if a command has been used too recently """
     time_now = local_time()
 
+    if nick.lower() in COOLDOWN_IMMUNE:
+        return False
+    
     if cooldown_time > time_now:
         print "Global cooldown is still up."
         return True
@@ -174,7 +177,7 @@ def parse(word, word_eol, userdata):
         }
     if not data['message'].startswith("!"):
         db_update(data)
-    if not on_global_cooldown():
+    if data['nick'].lower() in COOLDOWN_IMMUNE or not on_global_cooldown():
         route(data)
 
 def route(data):
