@@ -43,7 +43,8 @@ DB_PATH = DIR_PATH + "/WordCount.db"
 STOP_WORD_PATH = DIR_PATH + "/stop_words.csv"
 STOP_WORDS = load_stop_words(STOP_WORD_PATH)
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
-REGEX = re.compile(r'[\s]+')
+REGEX = re.compile(r'\W+')
+HTTP_RE = re.compile(r'https?:\/\/.*[\r\n]*') # re.sub() remove URLs
 
 cooldown_time = local_time()
 db_connection = sqlite3.connect(DB_PATH)
@@ -92,7 +93,8 @@ def break_nickname(nick):
 
 def wc_update(data):
     """ Update count of words said by user """
-    result = filter(lambda x: len(x.decode('utf-8')) > 3, REGEX.split(data['message'].lower()))
+    result = filter(lambda x: len(x.decode('utf-8')) > 3, 
+                    REGEX.split(HTTP_RE.sub('', data['message'].lower())))
     freq = Counter(result)
 
     for word in freq:
