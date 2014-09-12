@@ -175,10 +175,9 @@ def word_top_users(word):
 
 def most_spoken_words():
     """ Return the top 10 words said by all users """
-    sql_query = ("SELECT word, SUM(count) "
-                 "FROM WordCount "
-                 "GROUP BY word "
-                 "ORDER BY SUM(count) DESC "
+    sql_query = ("SELECT word, count "
+                 "FROM EveryUser "
+                 "ORDER BY count DESC "
                  "LIMIT 10")
     db_cursor.execute(sql_query)
     results = db_cursor.fetchall()
