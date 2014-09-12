@@ -193,8 +193,8 @@ def user_top_words(caller, nick):
 
 def word_top_users(word):
     """ Return the top ?? users that have said word """
-    if len(word) <= 3:
-        hexchat.command("say Words longer than 3 letters are recorded.")
+    if len(word) < 3:
+        hexchat.command("say Words longer than 2 letters are recorded.")
         cooldown_update()
         return
 
