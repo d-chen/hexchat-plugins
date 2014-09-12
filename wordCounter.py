@@ -184,7 +184,7 @@ def user_top_words(caller, nick):
                  "WHERE user=? "
                  "ORDER BY count DESC "
                  "LIMIT 8")
-    db_cursor.execute(sql_query, (nick,))
+    db_cursor.execute(sql_query, (nick.lower(),))
     results = db_cursor.fetchall()
 
     msg_command = "say {0} -> This user's top words: ".format(caller) + report_list(results, False)
