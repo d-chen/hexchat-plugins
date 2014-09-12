@@ -15,7 +15,6 @@ import re
 import hexchat
 import pytz
 
-
 # HACK: Set default encoding to UTF-8
 if (sys.getdefaultencoding() != "utf-8"):
     oldout, olderr = sys.stdout, sys.stderr         # Backup stdout and stderr
@@ -75,18 +74,6 @@ def unload_cb(userdata):
     db_connection.commit()
     db_connection.close()
     hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been unloaded.")
-
-def clearstop_cb(word, word_eol, userdata):
-    """ Remove unwanted words from dictionaries """
-    for nick in word_count:
-        for stop_word in STOP_WORDS:
-            del word_count[nick][stop_word]
-
-    for stop_word in STOP_WORDS:
-        del total_word_count[stop_word]
-
-    print "Deleted stop words from word count dictionaries"
-    return hexchat.EAT_ALL
 
 def deleteuser_cb(word, word_eol, userdata):
     """ Delete user from dictionary """
