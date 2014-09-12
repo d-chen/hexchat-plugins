@@ -1,5 +1,5 @@
 ﻿__module_name__ = "User Word Counter"
-__module_version__ = "2.0 Beta"
+__module_version__ = "2.0"
 __module_description__ = "Records the times a user has said a word"
 
 from collections import Counter
@@ -127,7 +127,7 @@ def wc_update(data):
             log_context.prnt(u"Discarding {0} from {1} for being too long".format(word, data['nick']))
         elif word != " ":
             # likely bot abuse / spam if exceeding these limits for normal chat
-            log_context.prnt(u"Logging {0} from {1}. {2} times.".format(word, data['nick'], freq[word]))
+            log_context.prnt(u"Logging {0} from {1}. Count +={2}.".format(word, data['nick'], freq[word]))
             wc_update_sql(data['nick'], word.decode('utf-8'), freq[word])
     db_connection.commit()
             
