@@ -35,6 +35,19 @@ def load_stop_words(file_path):
         for row in reader:
             stop_list += row
     return set(stop_list)
+    
+def find_log_tab():
+    """ Create separate tab for debugging messages """
+    context = hexchat.find_context(channel=LOG_CONTEXT_NAME)
+    if context == None:
+        newtofront = hexchat.get_prefs('gui_tab_newtofront')
+        
+        hexchat.command('set -quiet gui_tab_newtofront 0')
+        hexchat.command('newserver -noconnect {0}'.format(LOG_CONTEXT_NAME))
+        hexchat.command('set -quiet gui_tab_newtofront {}'.format(newtofront))
+        return hexchat.find_context(channel=TAB_NAME)
+    else:
+        return context
 
 # setup and constants
 COOLDOWN = 10
@@ -42,12 +55,15 @@ DIR_PATH = hexchat.get_info("configdir")
 DB_PATH = DIR_PATH + "/WordCount.db"
 STOP_WORD_PATH = DIR_PATH + "/stop_words.csv"
 STOP_WORDS = load_stop_words(STOP_WORD_PATH)
+LOG_CONTEXT_NAME = ":wordcount:"
+LOG_CONTEXT = hexchat.find_context(LOG_CONTEXT_NAME)
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
 REGEX = re.compile(r'\W+')
 HTTP_RE = re.compile(r'https?:\/\/.*[\r\n]*') # re.sub() remove URLs
 CMD_RE = re.compile(r'\!\w+\s') # remove other chat commands
 
 cooldown_time = local_time()
+log_context = find_log_tab()
 db_connection = sqlite3.connect(DB_PATH)
 db_cursor = db_connection.cursor()
 db_cursor.execute(("CREATE TABLE IF NOT EXISTS WordCount (user TEXT, "
@@ -55,6 +71,8 @@ db_cursor.execute(("CREATE TABLE IF NOT EXISTS WordCount (user TEXT, "
                                                          "count INTEGER, "
                                                          "UNIQUE(user, word) ON CONFLICT REPLACE)"))
 db_cursor.execute(("CREATE TABLE IF NOT EXISTS EveryUser (word TEXT UNIQUE, count INTEGER)"))
+
+
 
 def on_cooldown():
     """ Return true if script has made a response recently """
@@ -103,8 +121,13 @@ def wc_update(data):
     for word in freq:
         if word in STOP_WORDS or word.startswith("!") or word.startswith("http"):
             continue
-        elif word != " " and freq[word] <= 3 and len(word.decode('utf-8')) <= 16:
+        elif freq[word] > 3:
+            log_context.prnt(u"Discarding {0} from {1} for spam".format(word, data['nick']))
+        elif len(word.decode('utf-8')) > 16:
+            log_context.prnt(u"Discarding {0} from {1} for being too long".format(word, data['nick']))
+        elif word != " ":
             # likely bot abuse / spam if exceeding these limits for normal chat
+            log_context.prnt(u"Logging {0} from {1}. {2} times.".format(word, data['nick'], freq[word]))
             wc_update_sql(data['nick'], word.decode('utf-8'), freq[word])
     db_connection.commit()
             
