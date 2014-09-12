@@ -54,6 +54,7 @@ db_cursor.execute(("CREATE TABLE IF NOT EXISTS WordCount (user TEXT, "
                                                          "word TEXT, "
                                                          "count INTEGER, "
                                                          "UNIQUE(user, word) ON CONFLICT REPLACE)"))
+db_cursor.execute(("CREATE TABLE IF NOT EXISTS EveryUser (word TEXT UNIQUE, count INTEGER)"))
 
 def on_cooldown():
     """ Return true if script has made a response recently """
@@ -115,6 +116,12 @@ def wc_update_sql(user, word, count):
                          "COALESCE(((SELECT count FROM WordCount WHERE user=? AND word=?)+?), ?)"
                          ")")
     db_cursor.execute(sql_query, (user, word, user, word, count, count))
+    # different table for faster aggregate data
+    sql_query = (u"REPLACE INTO EveryUser (word, count) "
+                 "VALUES (?, "
+                 "COALESCE(((SELECT count FROM EveryUser WHERE word=?)+?), ?)"
+                 ")")
+    db_cursor.execute(sql_query, (word, word, count, count))
 
 def report_list(items, break_text):
     """ Generate message based on a list of items """
