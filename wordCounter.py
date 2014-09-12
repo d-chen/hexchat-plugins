@@ -45,7 +45,7 @@ def find_log_tab():
         hexchat.command('set -quiet gui_tab_newtofront 0')
         hexchat.command('newserver -noconnect {0}'.format(LOG_CONTEXT_NAME))
         hexchat.command('set -quiet gui_tab_newtofront {}'.format(newtofront))
-        return hexchat.find_context(channel=TAB_NAME)
+        return hexchat.find_context(channel=LOG_CONTEXT_NAME)
     else:
         return context
 
@@ -117,17 +117,36 @@ def wc_update(data):
     msg_no_urls = HTTP_RE.sub('', msg_no_cmds)
     result = filter(lambda x: len(x.decode('utf-8')) > 2, REGEX.split(msg_no_urls))
     freq = Counter(result)
+    user = data['nick']
+    color = ["\0030", "\0032", "\0037", "\0034"]
+    log_context = find_log_tab()
 
     for word in freq:
         if word in STOP_WORDS or word.startswith("!") or word.startswith("http"):
             continue
         elif freq[word] > 3:
-            log_context.prnt(u"Discarding {0} from {1} for spam".format(word, data['nick']))
+            log = u"{0}Discard{1} {3}{0} from{2} {4}{0}. Spam".format(color[0],
+                                                                      color[1],
+                                                                      color[2],
+                                                                      word,
+                                                                      user)
+            log_context.prnt(log)
         elif len(word.decode('utf-8')) > 16:
-            log_context.prnt(u"Discarding {0} from {1} for being too long".format(word, data['nick']))
+            log = u"{0}Discard{1} {3}{0} from{2} {4}{0}. Too long.".format(color[0],
+                                                                           color[1],
+                                                                           color[2],
+                                                                           word,
+                                                                           user)
+            log_context.prnt(log)
         elif word != " ":
-            # likely bot abuse / spam if exceeding these limits for normal chat
-            log_context.prnt(u"Logging {0} from {1}. Count +={2}.".format(word, data['nick'], freq[word]))
+            log = u"{0}Log{1} {4}{0} from{2} {5}{0}. Count ={3} {6}".format(color[0],
+                                                                            color[1],
+                                                                            color[2],
+                                                                            color[3],
+                                                                            word,
+                                                                            user,
+                                                                            freq[word])
+            log_context.prnt(log)
             wc_update_sql(data['nick'], word.decode('utf-8'), freq[word])
     db_connection.commit()
             
@@ -233,9 +252,6 @@ def route(data):
     """ Handle command calls """
     cmd_data = data['message'].split()
     length = len(cmd_data)
-    
-    if not data['nick'] == 'saprol':
-        return
     
     if cmd_data[0] != "!words":
         return
