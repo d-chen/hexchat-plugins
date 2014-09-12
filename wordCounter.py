@@ -45,6 +45,7 @@ STOP_WORDS = load_stop_words(STOP_WORD_PATH)
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
 REGEX = re.compile(r'\W+')
 HTTP_RE = re.compile(r'https?:\/\/.*[\r\n]*') # re.sub() remove URLs
+CMD_RE = re.compile(r'\!\w+\s') # remove other chat commands
 
 cooldown_time = local_time()
 db_connection = sqlite3.connect(DB_PATH)
@@ -93,8 +94,9 @@ def break_nickname(nick):
 
 def wc_update(data):
     """ Update count of words said by user """
-    result = filter(lambda x: len(x.decode('utf-8')) >= 3, 
-                    REGEX.split(HTTP_RE.sub('', data['message'].lower())))
+    msg_no_cmds = CMD_RE.sub(' ', data['message'].lower())
+    msg_no_urls = HTTP_RE.sub('', msg_no_cmds)
+    result = filter(lambda x: len(x.decode('utf-8')) > 2, REGEX.split(msg_no_urls))
     freq = Counter(result)
 
     for word in freq:
