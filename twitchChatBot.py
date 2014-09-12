@@ -145,7 +145,7 @@ def now_playing():
     try:
         with open(NOW_PLAYING_FILE, 'r') as file:
             title = file.read()
-            hexchat.command('say [Saprol\'s FB2K]' + title)
+            hexchat.command('say [Saprol\'s FB2K] ' + title)
     except IOError as error:
         print 'ERROR: Could not read ' + NOW_PLAYING_FILE
 
@@ -163,7 +163,7 @@ def get_channel_views(channel):
         viewers = resp_json['stream']['viewers']
         hexchat.command("say There are currently {0} viewers in this channel.".format(viewers))
     else:
-        hexchat.command("say This stream is currently offline.")
+        hexchat.command("say This stream is currently offline or Twitch API is down.")
 
 def parse(word, word_eol, userdata):
     """ Prepare messages for processing """
