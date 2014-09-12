@@ -1,5 +1,5 @@
 ﻿__module_name__ = "User Word Counter"
-__module_version__ = "1.1"
+__module_version__ = "2.0"
 __module_description__ = "Records the times a user has said a word"
 
 from collections import Counter
@@ -8,6 +8,7 @@ import csv
 import datetime
 import string
 import os
+import sqlite3
 import sys
 import re
 
@@ -34,27 +35,44 @@ def load_stop_words(file_path):
         for row in reader:
             stop_list += row
     return set(stop_list)
+    
+def find_log_tab():
+    """ Create separate tab for debugging messages """
+    context = hexchat.find_context(channel=LOG_CONTEXT_NAME)
+    if context == None:
+        newtofront = hexchat.get_prefs('gui_tab_newtofront')
+        
+        hexchat.command('set -quiet gui_tab_newtofront 0')
+        hexchat.command('newserver -noconnect {0}'.format(LOG_CONTEXT_NAME))
+        hexchat.command('set -quiet gui_tab_newtofront {}'.format(newtofront))
+        return hexchat.find_context(channel=TAB_NAME)
+    else:
+        return context
 
 # setup and constants
 COOLDOWN = 10
-cooldown_time = local_time()
 DIR_PATH = hexchat.get_info("configdir")
-FILE_PATH = DIR_PATH + "/wordfreq.pickle"
-TOTAL_COUNT_PATH = DIR_PATH + "/totalwordfreq.pickle"
+DB_PATH = DIR_PATH + "/WordCount.db"
 STOP_WORD_PATH = DIR_PATH + "/stop_words.csv"
 STOP_WORDS = load_stop_words(STOP_WORD_PATH)
+LOG_CONTEXT_NAME = ":wordcount:"
+LOG_CONTEXT = hexchat.find_context(LOG_CONTEXT_NAME)
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
-REGEX = re.compile(r'[\s]+')
+REGEX = re.compile(r'\W+')
+HTTP_RE = re.compile(r'https?:\/\/.*[\r\n]*') # re.sub() remove URLs
+CMD_RE = re.compile(r'\!\w+\s') # remove other chat commands
 
-if os.path.isfile(FILE_PATH):
-    word_count = pickle.load(open(FILE_PATH, "rb"))
-else:
-    word_count = {}
+cooldown_time = local_time()
+log_context = find_log_tab()
+db_connection = sqlite3.connect(DB_PATH)
+db_cursor = db_connection.cursor()
+db_cursor.execute(("CREATE TABLE IF NOT EXISTS WordCount (user TEXT, "
+                                                         "word TEXT, "
+                                                         "count INTEGER, "
+                                                         "UNIQUE(user, word) ON CONFLICT REPLACE)"))
+db_cursor.execute(("CREATE TABLE IF NOT EXISTS EveryUser (word TEXT UNIQUE, count INTEGER)"))
 
-if os.path.isfile(TOTAL_COUNT_PATH):
-    total_word_count = pickle.load(open(TOTAL_COUNT_PATH, "rb"))
-else:
-    total_word_count = Counter()
+
 
 def on_cooldown():
     """ Return true if script has made a response recently """
@@ -71,27 +89,18 @@ def cooldown_update():
     cooldown_time = time_now + datetime.timedelta(seconds=COOLDOWN)
 
 def unload_cb(userdata):
-    """ Pickle the word counters when plugin is unloaded """
-    pickle.dump(word_count, open(FILE_PATH, "wb"))
-    pickle.dump(total_word_count, open(TOTAL_COUNT_PATH, "wb"))
+    """ Commit and close database when unloading """
+    db_connection.commit()
+    db_connection.close()
     hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been unloaded.")
-
-def clearstop_cb(word, word_eol, userdata):
-    """ Remove unwanted words from dictionaries """
-    for nick in word_count:
-        for stop_word in STOP_WORDS:
-            del word_count[nick][stop_word]
-
-    for stop_word in STOP_WORDS:
-        del total_word_count[stop_word]
-
-    print "Deleted stop words from word count dictionaries"
-    return hexchat.EAT_ALL
 
 def deleteuser_cb(word, word_eol, userdata):
     """ Delete user from dictionary """
     nick = word_eol[1]
-    del word_count[nick]
+    sql_query = ("DELETE FROM WordCount "
+                 "WHERE user=?")
+    db_cursor.execute(sql_query, (nick,))
+    db_connection.commit()
     print "Deleted {0} from word count dictionary".format(nick)
     return hexchat.EAT_ALL
 
@@ -104,45 +113,69 @@ def break_nickname(nick):
 
 def wc_update(data):
     """ Update count of words said by user """
-    nick = data['nick']
-    result = filter(lambda x: len(x.decode('utf-8')) > 2, REGEX.split(data['message']))
+    msg_no_cmds = CMD_RE.sub(' ', data['message'].lower())
+    msg_no_urls = HTTP_RE.sub('', msg_no_cmds)
+    result = filter(lambda x: len(x.decode('utf-8')) > 2, REGEX.split(msg_no_urls))
     freq = Counter(result)
 
-    if nick not in word_count:
-        word_count[nick] = Counter()
-
     for word in freq:
-        if word.lower() in STOP_WORDS:
+        if word in STOP_WORDS or word.startswith("!") or word.startswith("http"):
             continue
-        elif word != " " and not word.startswith("!") and not word.startswith("http"):
-            word_count[nick][word.lower()] += freq[word]
-            total_word_count[word.lower()] += freq[word]
+        elif freq[word] > 3:
+            log_context.prnt(u"Discarding {0} from {1} for spam".format(word, data['nick']))
+        elif len(word.decode('utf-8')) > 16:
+            log_context.prnt(u"Discarding {0} from {1} for being too long".format(word, data['nick']))
+        elif word != " ":
+            # likely bot abuse / spam if exceeding these limits for normal chat
+            log_context.prnt(u"Logging {0} from {1}. Count +={2}.".format(word, data['nick'], freq[word]))
+            wc_update_sql(data['nick'], word.decode('utf-8'), freq[word])
+    db_connection.commit()
+            
+def wc_update_sql(user, word, count): 
+    # sqlite3 does not support UPSERT, instead SELECT for existing field
+    sql_query = (u"REPLACE INTO WordCount (user, word, count) "
+                 "VALUES (?, "
+                         "?, "
+                         "COALESCE(((SELECT count FROM WordCount WHERE user=? AND word=?)+?), ?)"
+                         ")")
+    db_cursor.execute(sql_query, (user, word, user, word, count, count))
+    # different table for faster aggregate data
+    sql_query = (u"REPLACE INTO EveryUser (word, count) "
+                 "VALUES (?, "
+                 "COALESCE(((SELECT count FROM EveryUser WHERE word=?)+?), ?)"
+                 ")")
+    db_cursor.execute(sql_query, (word, word, count, count))
 
 def report_list(items, break_text):
     """ Generate message based on a list of items """
     report = ""
-    for item, count in items:
-        text = item
+    for row in items:
+        text = row[0]
+        count = row[1]
         if break_text:
-            text = break_nickname(item)
+            text = break_nickname(text)
         partial = "{0} ({1}), ".format(text, count)
         report += partial
     return report
 
 def user_top_words(caller, nick):
     """ Return the top words a user has said """
-    if nick.lower() not in word_count:
-        return
+    sql_query = ("SELECT word, count "
+                 "FROM WordCount "
+                 "WHERE user=? "
+                 "ORDER BY count DESC "
+                 "LIMIT 8")
+    db_cursor.execute(sql_query, (nick,))
+    results = db_cursor.fetchall()
 
-    top_words = word_count[nick.lower()].most_common(10)
-    msg_command = "say {0} -> This user's top words: ".format(caller) + report_list(top_words, False)
+    msg_command = "say {0} -> This user's top words: ".format(caller) + report_list(results, False)
     hexchat.command(msg_command)
     cooldown_update()
 
 def word_top_users(word):
     """ Return the top ?? users that have said word """
-    if len(word) < 3:
-        hexchat.command("say Words longer than 2 letters are recorded.")
+    if len(word) <= 3:
+        hexchat.command("say Words longer than 3 letters are recorded.")
         cooldown_update()
         return
 
@@ -151,26 +184,34 @@ def word_top_users(word):
         cooldown_update()
         return
 
-    user_list = Counter()
-    for nick in word_count:
-        if word.lower() in word_count[nick]:
-            user_list[nick] = word_count[nick][word.lower()]
+    sql_query = ("SELECT user, count "
+                 "FROM WordCount "
+                 "WHERE word=? "
+                 "ORDER BY count DESC "
+                 "LIMIT 8")
+    db_cursor.execute(sql_query, (word.decode('utf-8'),))
+    results = db_cursor.fetchall()
 
-    top_users = user_list.most_common(8)
-    msg_command = "say Top users of '{0}': ".format(word.lower()) + report_list(top_users, True)
+    msg_command = "say Top users of '{0}': ".format(word.lower()) + report_list(results, True)
     hexchat.command(msg_command)
     cooldown_update()
 
 def most_spoken_words():
     """ Return the top 10 words said by all users """
-    top_words = total_word_count.most_common(10)
-    msg_command = "say Top words recorded: " + report_list(top_words, False)
+    sql_query = ("SELECT word, count "
+                 "FROM EveryUser "
+                 "ORDER BY count DESC "
+                 "LIMIT 10")
+    db_cursor.execute(sql_query)
+    results = db_cursor.fetchall()
+    
+    msg_command = "say Top words recorded: " + report_list(results, False)
     hexchat.command(msg_command)
     cooldown_update()
 
 def wc_print_usage():
     """ Print syntax for using !words commands """
-    hexchat.command("say " + "Usage: !words user [NAME] / !words word [WORD] / !words everyone")
+    hexchat.command("say " + "Examples: !words user [USERNAME] / !words word [WORD] / !words everyone")
     cooldown_update()
 
 def parse(word, word_eol, userdata):
@@ -184,26 +225,26 @@ def parse(word, word_eol, userdata):
         "message" : str_data[4][1:].encode('utf-8')
         }
     if not data['message'].startswith("!"):
-        wc_update(data)
+       wc_update(data)
     if data['message'].startswith("!") and not on_cooldown():
-        route(data)
+       route(data) 
 
 def route(data):
     """ Handle command calls """
     cmd_data = data['message'].split()
     length = len(cmd_data)
-
+    
+    if not data['nick'] == 'saprol':
+        return
+    
     if cmd_data[0] != "!words":
         return
-    elif length == 2:
-        if cmd_data[1] == "everyone":
+    elif cmd_data[1] == "everyone":
             most_spoken_words()
-        else:
-            wc_print_usage()
-    elif length == 3:
-        if cmd_data[1] == "user" or cmd_data[1] == "topwords":
+    elif length >= 3:
+        if cmd_data[1] == "user":
             user_top_words(data['nick'], cmd_data[2])
-        elif cmd_data[1] == "word" or cmd_data[1] == "topusers":
+        elif cmd_data[1] == "word":
             word_top_users(cmd_data[2])
         else:
             wc_print_usage()
@@ -213,7 +254,6 @@ def route(data):
 
 hexchat.hook_server('PRIVMSG', parse)
 hexchat.hook_unload(unload_cb)
-hexchat.hook_command("CLEARSTOP", clearstop_cb, help="/CLEARSTOP Removes stop words from the dictionary")
-hexchat.hook_command("DELUSER", deleteuser_cb, help="/DELUSER [name] Removes user from the dictionary")
+hexchat.hook_command("wc_delete", deleteuser_cb, help="/wc_delete [name] Removes user from database")
 
 hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been loaded.")

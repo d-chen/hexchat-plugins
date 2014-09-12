@@ -189,11 +189,6 @@ def route(data):
         if not on_cooldown(data['nick']):
             hexchat.command("say " + data['nick'] + " -> Current active commands: !viewers !seen !jptime !wctime !sapmusic")
                 
-    if command_data[0] == '!words':
-        if not on_cooldown(data['nick']):
-            hexchat.command('say !words is disabled cause Hexchat RAM usage increased tenfold BibleThump.'
-                            ' Other commands available by using !ltb')
-
     if command_data[0] == '!seen':
         if on_cooldown(data['nick']):
             return
