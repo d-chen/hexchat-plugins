@@ -211,7 +211,7 @@ def route(data):
 
 hexchat.hook_server('PRIVMSG', parse)
 hexchat.hook_unload(unload_cb)
-hexchat.hook_timer(120000, db_commit)
+hexchat.hook_timer(10000, db_commit)
 hexchat.hook_command("wc_delete", deleteuser_cb, help="/wc_delete [name] Removes user from database")
 
 hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been loaded.")
