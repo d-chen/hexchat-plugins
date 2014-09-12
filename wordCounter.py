@@ -255,7 +255,7 @@ def route(data):
     
     if cmd_data[0] != "!words":
         return
-    elif cmd_data[1] == "everyone":
+    elif length >= 2 and cmd_data[1] == "everyone":
             most_spoken_words()
     elif length >= 3:
         if cmd_data[1] == "user":
