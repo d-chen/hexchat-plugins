@@ -48,7 +48,10 @@ REGEX = re.compile(r'[\s]+')
 cooldown_time = local_time()
 db_connection = sqlite3.connect(DB_PATH)
 db_cursor = db_connection.cursor()
-db_cursor.execute("CREATE TABLE IF NOT EXISTS WordCount (user TEXT, word TEXT, count INTEGER)")
+db_cursor.execute(("CREATE TABLE IF NOT EXISTS WordCount (user TEXT, "
+                                                         "word TEXT, "
+                                                         "count INTEGER, "
+                                                         "UNIQUE(user, word) ON CONFLICT REPLACE)"))
 
 
 def on_cooldown():
@@ -104,7 +107,7 @@ def wc_update(data):
             
 def wc_update_sql(user, word, count): 
     # sqlite3 does not support UPSERT, instead SELECT for existing field
-    sql_query = ("INSERT OR REPLACE INTO WordCount (user, word, count) "
+    sql_query = ("REPLACE INTO WordCount (user, word, count) "
                  "VALUES (?, "
                          "?, "
                          "COALESCE(((SELECT count FROM WordCount WHERE user=? AND word=?)+?), ?)"
