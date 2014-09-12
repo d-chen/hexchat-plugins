@@ -91,21 +91,25 @@ def break_nickname(nick):
     return new_nick
 
 def wc_update(data):
-    # TODO: REWRITE
     """ Update count of words said by user """
-    nick = data['nick']
-    result = filter(lambda x: len(x.decode('utf-8')) > 2, REGEX.split(data['message']))
+    result = filter(lambda x: len(x.decode('utf-8')) > 3, REGEX.split(data['message'].lower()))
     freq = Counter(result)
 
-    if nick not in word_count:
-        word_count[nick] = Counter()
-
     for word in freq:
-        if word.lower() in STOP_WORDS:
+        if word in STOP_WORDS or word.startswith("!") or word.startswith("http"):
             continue
-        elif word != " " and not word.startswith("!") and not word.startswith("http"):
-            word_count[nick][word.lower()] += freq[word]
-            total_word_count[word.lower()] += freq[word]
+        elif word != " " and freq[word] <= 3:
+            # freq greater than 3 in a TwitchTV msg, it's likely bot abuse / spam
+            wc_update_sql(data['nick'], word, freq[word])
+            
+def wc_update_sql(user, word, count): 
+    # sqlite3 does not support UPSERT, instead SELECT for existing field
+    sql_query = ("INSERT OR REPLACE INTO WordCount (user, word, count) "
+                 "VALUES (?, "
+                         "?, "
+                         "COALESCE(((SELECT count FROM WordCount WHERE user=? AND word=?)+?), ?)"
+                         ")")
+    db_cursor.execute(sql_query, (user, word, user, word, count, count))
 
 def report_list(items, break_text):
     # TODO: REWRITE
@@ -133,8 +137,8 @@ def user_top_words(caller, nick):
 def word_top_users(word):
     # TODO: REWRITE
     """ Return the top ?? users that have said word """
-    if len(word) < 3:
-        hexchat.command("say Words longer than 2 letters are recorded.")
+    if len(word) <= 3:
+        hexchat.command("say Words longer than 4 letters are recorded.")
         cooldown_update()
         return
 
@@ -179,8 +183,8 @@ def parse(word, word_eol, userdata):
         }
     if not data['message'].startswith("!"):
         wc_update(data)
-    if data['message'].startswith("!") and not on_cooldown():
-        route(data)
+    #if data['message'].startswith("!") and not on_cooldown(): #disable while debugging
+    #   route(data) 
 
 def route(data):
     """ Handle command calls """
