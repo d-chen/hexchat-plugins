@@ -102,8 +102,8 @@ def wc_update(data):
     for word in freq:
         if word in STOP_WORDS or word.startswith("!") or word.startswith("http"):
             continue
-        elif word != " " and freq[word] <= 3:
-            # freq greater than 3 in a TwitchTV msg, it's likely bot abuse / spam
+        elif word != " " and freq[word] <= 3 and len(word.decode('utf-8')) <= 16:
+            # likely bot abuse / spam if exceeding these limits for normal chat
             wc_update_sql(data['nick'], word.decode('utf-8'), freq[word])
     db_connection.commit()
             
