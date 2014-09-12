@@ -76,6 +76,7 @@ def unload_cb(userdata):
     hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been unloaded.")
 
 def deleteuser_cb(word, word_eol, userdata):
+    # TODO: REWRITE
     """ Delete user from dictionary """
     nick = word_eol[1]
     del word_count[nick]
@@ -90,6 +91,7 @@ def break_nickname(nick):
     return new_nick
 
 def wc_update(data):
+    # TODO: REWRITE
     """ Update count of words said by user """
     nick = data['nick']
     result = filter(lambda x: len(x.decode('utf-8')) > 2, REGEX.split(data['message']))
@@ -106,6 +108,7 @@ def wc_update(data):
             total_word_count[word.lower()] += freq[word]
 
 def report_list(items, break_text):
+    # TODO: REWRITE
     """ Generate message based on a list of items """
     report = ""
     for item, count in items:
@@ -117,6 +120,7 @@ def report_list(items, break_text):
     return report
 
 def user_top_words(caller, nick):
+    # TODO: REWRITE
     """ Return the top words a user has said """
     if nick.lower() not in word_count:
         return
@@ -127,6 +131,7 @@ def user_top_words(caller, nick):
     cooldown_update()
 
 def word_top_users(word):
+    # TODO: REWRITE
     """ Return the top ?? users that have said word """
     if len(word) < 3:
         hexchat.command("say Words longer than 2 letters are recorded.")
@@ -149,6 +154,7 @@ def word_top_users(word):
     cooldown_update()
 
 def most_spoken_words():
+    # TODO: REWRITE
     """ Return the top 10 words said by all users """
     top_words = total_word_count.most_common(10)
     msg_command = "say Top words recorded: " + report_list(top_words, False)
@@ -156,6 +162,7 @@ def most_spoken_words():
     cooldown_update()
 
 def wc_print_usage():
+    # TODO: REWRITE
     """ Print syntax for using !words commands """
     hexchat.command("say " + "Usage: !words user [NAME] / !words word [WORD] / !words everyone")
     cooldown_update()
