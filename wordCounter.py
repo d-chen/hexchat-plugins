@@ -111,25 +111,28 @@ def wc_update_sql(user, word, count):
     db_cursor.execute(sql_query, (user, word, user, word, count, count))
 
 def report_list(items, break_text):
-    # TODO: REWRITE
     """ Generate message based on a list of items """
     report = ""
-    for item, count in items:
-        text = item
+    for row in items:
+        text = row[0]
+        count = row[1]
         if break_text:
-            text = break_nickname(item)
+            text = break_nickname(text)
         partial = "{0} ({1}), ".format(text, count)
         report += partial
     return report
 
 def user_top_words(caller, nick):
-    # TODO: REWRITE
     """ Return the top words a user has said """
-    if nick.lower() not in word_count:
-        return
+    sql_query = ("SELECT word, count "
+                 "FROM WordCount "
+                 "WHERE user=? "
+                 "ORDER BY count DESC "
+                 "LIMIT 8")
+    db_cursor.execute(sql_query, (nick,))
+    results = db_cursor.fetchall()
 
-    top_words = word_count[nick.lower()].most_common(10)
-    msg_command = "say {0} -> This user's top words: ".format(caller) + report_list(top_words, False)
+    msg_command = "say {0} -> This user's top words: ".format(caller) + report_list(results, False)
     hexchat.command(msg_command)
     cooldown_update()
 
@@ -146,13 +149,15 @@ def word_top_users(word):
         cooldown_update()
         return
 
-    user_list = Counter()
-    for nick in word_count:
-        if word.lower() in word_count[nick]:
-            user_list[nick] = word_count[nick][word.lower()]
+    sql_query = ("SELECT user, count "
+                 "FROM WordCount "
+                 "WHERE word=? "
+                 "ORDER BY count DESC "
+                 "LIMIT 8")
+    db_cursor.execute(sql_query, (word.decode('utf-8'),))
+    results = db_cursor.fetchall()
 
-    top_users = user_list.most_common(8)
-    msg_command = "say Top users of '{0}': ".format(word.lower()) + report_list(top_users, True)
+    msg_command = "say Top users of '{0}': ".format(word.lower()) + report_list(results, True)
     hexchat.command(msg_command)
     cooldown_update()
 
@@ -182,8 +187,8 @@ def parse(word, word_eol, userdata):
         }
     if not data['message'].startswith("!"):
         wc_update(data)
-    #if data['message'].startswith("!") and not on_cooldown(): #disable while debugging
-    #   route(data) 
+    if data['message'].startswith("!") and not on_cooldown():
+       route(data) 
 
 def route(data):
     """ Handle command calls """
@@ -192,15 +197,12 @@ def route(data):
 
     if cmd_data[0] != "!words":
         return
-    elif length == 2:
-        if cmd_data[1] == "everyone":
-            most_spoken_words()
-        else:
-            wc_print_usage()
-    elif length == 3:
-        if cmd_data[1] == "user" or cmd_data[1] == "topwords":
+    elif cmd_data[1] == "everyone":
+            print "Do nothing" #most_spoken_words()
+    elif length >= 3:
+        if cmd_data[1] == "user":
             user_top_words(data['nick'], cmd_data[2])
-        elif cmd_data[1] == "word" or cmd_data[1] == "topusers":
+        elif cmd_data[1] == "word":
             word_top_users(cmd_data[2])
         else:
             wc_print_usage()

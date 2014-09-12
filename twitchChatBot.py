@@ -191,8 +191,7 @@ def route(data):
                 
     if command_data[0] == '!words':
         if not on_cooldown(data['nick']):
-            hexchat.command('say !words is disabled cause Hexchat RAM usage increased tenfold BibleThump.'
-                            ' Other commands available by using !ltb')
+            print "Do nothing" #hexchat.command('say !words is disabled. Other commands available by using !ltb')
 
     if command_data[0] == '!seen':
         if on_cooldown(data['nick']):
