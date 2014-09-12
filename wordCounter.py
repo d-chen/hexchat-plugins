@@ -137,7 +137,6 @@ def user_top_words(caller, nick):
     cooldown_update()
 
 def word_top_users(word):
-    # TODO: REWRITE
     """ Return the top ?? users that have said word """
     if len(word) <= 3:
         hexchat.command("say Words longer than 4 letters are recorded.")
@@ -164,15 +163,21 @@ def word_top_users(word):
 def most_spoken_words():
     # TODO: REWRITE
     """ Return the top 10 words said by all users """
-    top_words = total_word_count.most_common(10)
-    msg_command = "say Top words recorded: " + report_list(top_words, False)
+    sql_query = ("SELECT word, SUM(count) "
+                 "FROM WordCount "
+                 "GROUP BY word "
+                 "ORDER BY SUM(count) DESC "
+                 "LIMIT 10")
+    db_cursor.execute(sql_query)
+    results = db_cursor.fetchall()
+    
+    msg_command = "say Top words recorded: " + report_list(results, False)
     hexchat.command(msg_command)
     cooldown_update()
 
 def wc_print_usage():
-    # TODO: REWRITE
     """ Print syntax for using !words commands """
-    hexchat.command("say " + "Usage: !words user [NAME] / !words word [WORD] / !words everyone")
+    hexchat.command("say " + "Examples: !words user [USERNAME] / !words word [WORD] / !words everyone")
     cooldown_update()
 
 def parse(word, word_eol, userdata):
@@ -198,7 +203,7 @@ def route(data):
     if cmd_data[0] != "!words":
         return
     elif cmd_data[1] == "everyone":
-            print "Do nothing" #most_spoken_words()
+            most_spoken_words()
     elif length >= 3:
         if cmd_data[1] == "user":
             user_top_words(data['nick'], cmd_data[2])
