@@ -53,7 +53,6 @@ db_cursor.execute(("CREATE TABLE IF NOT EXISTS WordCount (user TEXT, "
                                                          "count INTEGER, "
                                                          "UNIQUE(user, word) ON CONFLICT REPLACE)"))
 
-
 def on_cooldown():
     """ Return true if script has made a response recently """
     time_now = local_time()
@@ -78,7 +77,7 @@ def deleteuser_cb(word, word_eol, userdata):
     # TODO: REWRITE
     """ Delete user from dictionary """
     nick = word_eol[1]
-    del word_count[nick]
+    #sql_query = ("
     print "Deleted {0} from word count dictionary".format(nick)
     return hexchat.EAT_ALL
 
@@ -99,12 +98,12 @@ def wc_update(data):
             continue
         elif word != " " and freq[word] <= 3:
             # freq greater than 3 in a TwitchTV msg, it's likely bot abuse / spam
-            wc_update_sql(data['nick'], word, freq[word])
+            wc_update_sql(data['nick'], word.decode('utf-8'), freq[word])
     db_connection.commit()
             
 def wc_update_sql(user, word, count): 
     # sqlite3 does not support UPSERT, instead SELECT for existing field
-    sql_query = ("REPLACE INTO WordCount (user, word, count) "
+    sql_query = (u"REPLACE INTO WordCount (user, word, count) "
                  "VALUES (?, "
                          "?, "
                          "COALESCE(((SELECT count FROM WordCount WHERE user=? AND word=?)+?), ?)"
