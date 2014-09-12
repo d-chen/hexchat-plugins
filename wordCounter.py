@@ -68,10 +68,6 @@ def cooldown_update():
     time_now = local_time()
     cooldown_time = time_now + datetime.timedelta(seconds=COOLDOWN)
 
-def db_commit(userdata):
-    db_connection.commit()
-    return 1 # keep hook_timer running
-    
 def unload_cb(userdata):
     """ Commit and close database when unloading """
     db_connection.commit()
@@ -104,6 +100,7 @@ def wc_update(data):
         elif word != " " and freq[word] <= 3:
             # freq greater than 3 in a TwitchTV msg, it's likely bot abuse / spam
             wc_update_sql(data['nick'], word, freq[word])
+    db_connection.commit()
             
 def wc_update_sql(user, word, count): 
     # sqlite3 does not support UPSERT, instead SELECT for existing field
@@ -214,7 +211,6 @@ def route(data):
 
 hexchat.hook_server('PRIVMSG', parse)
 hexchat.hook_unload(unload_cb)
-hexchat.hook_timer(10000, db_commit)
 hexchat.hook_command("wc_delete", deleteuser_cb, help="/wc_delete [name] Removes user from database")
 
 hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been loaded.")
