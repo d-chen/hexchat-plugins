@@ -48,7 +48,7 @@ REGEX = re.compile(r'[\s]+')
 cooldown_time = local_time()
 db_connection = sqlite3.connect(DB_PATH)
 db_cursor = db_connection.cursor()
-db_cursor.execute("CREATE TABLE IF NOT EXISTS WordCount (user TEXT UNIQUE, word TEXT, count INTEGER)")
+db_cursor.execute("CREATE TABLE IF NOT EXISTS WordCount (user TEXT, word TEXT, count INTEGER)")
 
 
 def on_cooldown():
