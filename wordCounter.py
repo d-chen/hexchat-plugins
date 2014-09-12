@@ -208,7 +208,7 @@ def word_top_users(word):
                  "WHERE word=? "
                  "ORDER BY count DESC "
                  "LIMIT 8")
-    db_cursor.execute(sql_query, (word.decode('utf-8'),))
+    db_cursor.execute(sql_query, (word.decode('utf-8').lower(),))
     results = db_cursor.fetchall()
 
     msg_command = "say Top users of '{0}': ".format(word.lower()) + report_list(results, True)
