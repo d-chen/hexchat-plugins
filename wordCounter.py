@@ -1,5 +1,5 @@
 ﻿__module_name__ = "User Word Counter"
-__module_version__ = "1.1"
+__module_version__ = "2.0 Beta"
 __module_description__ = "Records the times a user has said a word"
 
 from collections import Counter
@@ -8,11 +8,13 @@ import csv
 import datetime
 import string
 import os
+import sqlite3
 import sys
 import re
 
 import hexchat
 import pytz
+
 
 # HACK: Set default encoding to UTF-8
 if (sys.getdefaultencoding() != "utf-8"):
@@ -37,24 +39,18 @@ def load_stop_words(file_path):
 
 # setup and constants
 COOLDOWN = 10
-cooldown_time = local_time()
 DIR_PATH = hexchat.get_info("configdir")
-FILE_PATH = DIR_PATH + "/wordfreq.pickle"
-TOTAL_COUNT_PATH = DIR_PATH + "/totalwordfreq.pickle"
+DB_PATH = DIR_PATH + "/WordCount.db"
 STOP_WORD_PATH = DIR_PATH + "/stop_words.csv"
 STOP_WORDS = load_stop_words(STOP_WORD_PATH)
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
 REGEX = re.compile(r'[\s]+')
 
-if os.path.isfile(FILE_PATH):
-    word_count = pickle.load(open(FILE_PATH, "rb"))
-else:
-    word_count = {}
+cooldown_time = local_time()
+db_connection = sqlite3.connect(DB_PATH)
+db_cursor = db_connection.cursor()
+db_cursor.execute("CREATE TABLE IF NOT EXISTS WordCount (user TEXT UNIQUE, word TEXT, count INTEGER)")
 
-if os.path.isfile(TOTAL_COUNT_PATH):
-    total_word_count = pickle.load(open(TOTAL_COUNT_PATH, "rb"))
-else:
-    total_word_count = Counter()
 
 def on_cooldown():
     """ Return true if script has made a response recently """
@@ -70,10 +66,14 @@ def cooldown_update():
     time_now = local_time()
     cooldown_time = time_now + datetime.timedelta(seconds=COOLDOWN)
 
+def db_commit(userdata):
+    db_connection.commit()
+    return 1 # keep hook_timer running
+    
 def unload_cb(userdata):
-    """ Pickle the word counters when plugin is unloaded """
-    pickle.dump(word_count, open(FILE_PATH, "wb"))
-    pickle.dump(total_word_count, open(TOTAL_COUNT_PATH, "wb"))
+    """ Commit and close database when unloading """
+    db_connection.commit()
+    db_connection.close()
     hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been unloaded.")
 
 def clearstop_cb(word, word_eol, userdata):
@@ -213,7 +213,7 @@ def route(data):
 
 hexchat.hook_server('PRIVMSG', parse)
 hexchat.hook_unload(unload_cb)
-hexchat.hook_command("CLEARSTOP", clearstop_cb, help="/CLEARSTOP Removes stop words from the dictionary")
-hexchat.hook_command("DELUSER", deleteuser_cb, help="/DELUSER [name] Removes user from the dictionary")
+hexchat.hook_timer(120000, db_commit)
+hexchat.hook_command("wc_delete", deleteuser_cb, help="/wc_delete [name] Removes user from database")
 
 hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been loaded.")
