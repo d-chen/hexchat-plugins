@@ -74,10 +74,12 @@ def unload_cb(userdata):
     hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been unloaded.")
 
 def deleteuser_cb(word, word_eol, userdata):
-    # TODO: REWRITE
     """ Delete user from dictionary """
     nick = word_eol[1]
-    #sql_query = ("
+    sql_query = ("DELETE FROM WordCount "
+                 "WHERE user=?")
+    db_cursor.execute(sql_query, (nick,))
+    db_connection.commit()
     print "Deleted {0} from word count dictionary".format(nick)
     return hexchat.EAT_ALL
 
@@ -161,7 +163,6 @@ def word_top_users(word):
     cooldown_update()
 
 def most_spoken_words():
-    # TODO: REWRITE
     """ Return the top 10 words said by all users """
     sql_query = ("SELECT word, SUM(count) "
                  "FROM WordCount "
@@ -191,7 +192,7 @@ def parse(word, word_eol, userdata):
         "message" : str_data[4][1:].encode('utf-8')
         }
     if not data['message'].startswith("!"):
-        wc_update(data)
+       wc_update(data)
     if data['message'].startswith("!") and not on_cooldown():
        route(data) 
 
@@ -199,7 +200,10 @@ def route(data):
     """ Handle command calls """
     cmd_data = data['message'].split()
     length = len(cmd_data)
-
+    
+    if not data['nick'] == 'saprol':
+        return
+    
     if cmd_data[0] != "!words":
         return
     elif cmd_data[1] == "everyone":
