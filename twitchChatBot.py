@@ -25,12 +25,14 @@ def local_time():
     loc_dt = datetime.datetime.now(pytz.timezone('US/Pacific'))
     return loc_dt
 
-NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/fb2k_nowPlaying_simple.txt'
+FB2K_NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/fb2k_nowPlaying_simple.txt'
+YOUTUBE_NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/nowplaying_youtube_chat.txt'
 COOLDOWN_PER_USER = 12
 COOLDOWN_GENERAL = 8
 BOT_LIST = ["kazukimouto", "nightbot", "brettbot", "rise_bot", "dj_jm09", "palebot"]
-COOLDOWN_IMMUNE = ["low_tier_bot", "saprol"] # debugging purposes
+ADMIN_ACCESS = ["low_tier_bot", "saprol"] # debugging purposes
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
+now_playing_source = 'FB2K'
 cooldown_time = local_time()
 last_use = {}
 
@@ -77,7 +79,7 @@ def on_cooldown(nick):
     """ Return true if a command has been used too recently """
     time_now = local_time()
 
-    if nick.lower() in COOLDOWN_IMMUNE:
+    if nick.lower() in ADMIN_ACCESS:
         return False
     
     if cooldown_time > time_now:
@@ -142,13 +144,32 @@ def seen(searcher, target):
 
 def now_playing():
     """ Announce current song playing, through generated .txt """
+    global now_playing_source
+    if now_playing_source == 'FB2K':
+        now_playing_file = FB2K_NOW_PLAYING_FILE
+    elif now_playing_source == 'YouTube':
+        now_playing_file = YOUTUBE_NOW_PLAYING_FILE
+        
     try:
-        with open(NOW_PLAYING_FILE, 'r') as file:
+        with open(now_playing_file, 'r') as file:
             title = file.read()
-            hexchat.command('say [Saprol\'s FB2K] ' + title)
+            hexchat.command('say [Saprol\'s {0}] {1}'.format(now_playing_source, title))
     except IOError as error:
-        print 'ERROR: Could not read ' + NOW_PLAYING_FILE
+        print 'ERROR: Could not read ' + now_playing_file
 
+def set_now_playing_source(source):
+    """ Change text file to read from for now_playing() """
+    global now_playing_source
+    if source.lower() == 'FB2K'.lower():
+        now_playing_source = 'FB2K'
+    elif source.lower() == 'YouTube'.lower():
+        now_playing_source = 'YouTube'
+    else:
+        hexchat.command("say {0} is an invalid option for !sapmusic".format(source))
+        return
+        
+    hexchat.command("say !sapmusic will now announce songs from Saprol's {0}".format(source))
+        
 def get_channel_views(channel):
     url = 'https://api.twitch.tv/kraken/streams/{0}'.format(channel[1:]) # channel starts with hash
     headers = {'accept': 'application/vnd.twitchtv.v3+json'}
@@ -177,7 +198,7 @@ def parse(word, word_eol, userdata):
         }
     if not data['message'].startswith("!"):
         db_update(data)
-    if data['nick'].lower() in COOLDOWN_IMMUNE or not on_global_cooldown():
+    if data['nick'].lower() in ADMIN_ACCESS or not on_global_cooldown():
         route(data)
 
 def route(data):
@@ -209,6 +230,8 @@ def route(data):
             japan_time()
 
     if command_data[0] == '!sapmusic':
+        if length == 2 and data['nick'] in ADMIN_ACCESS:
+            set_now_playing_source(command_data[1])
         if not on_cooldown(data['nick']):
             now_playing()
             
