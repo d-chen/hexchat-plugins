@@ -191,7 +191,7 @@ def user_top_words(caller, nick):
     hexchat.command(msg_command)
     cooldown_update()
 
-def word_top_users(word):
+def word_top_users(caller, word):
     """ Return the top ?? users that have said word """
     if len(word) < 3:
         hexchat.command("say Words longer than 2 letters are recorded.")
@@ -211,7 +211,8 @@ def word_top_users(word):
     db_cursor.execute(sql_query, (word.decode('utf-8').lower(),))
     results = db_cursor.fetchall()
 
-    msg_command = "say Top users of '{0}': ".format(word.lower()) + report_list(results, True)
+    results_str = report_list(results, True)
+    msg_command = "say {0} -> Top users of '{1}': {2}".format(caller, word.lower(), results_str)
     hexchat.command(msg_command)
     cooldown_update()
 
@@ -261,7 +262,7 @@ def route(data):
         if cmd_data[1] == "user":
             user_top_words(data['nick'], cmd_data[2])
         elif cmd_data[1] == "word":
-            word_top_users(cmd_data[2])
+            word_top_users(data['nick'], cmd_data[2])
         else:
             wc_print_usage()
     else:
