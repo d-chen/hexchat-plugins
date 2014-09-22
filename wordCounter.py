@@ -118,37 +118,36 @@ def wc_update(data):
     result = filter(lambda x: len(x.decode('utf-8')) > 2, REGEX.split(msg_no_urls))
     freq = Counter(result)
     user = data['nick']
-    color = ["\0030", "\0032", "\0037", "\0034"]
     log_context = find_log_tab()
 
     for word in freq:
         if word in STOP_WORDS or word.startswith("!") or word.startswith("http"):
             continue
         elif freq[word] > 3:
-            log = u"{0}Discard{1} {3}{0} from{2} {4}{0}. Spam".format(color[0],
-                                                                      color[1],
-                                                                      color[2],
-                                                                      word,
-                                                                      user)
-            log_context.prnt(log)
+            log_wc_update("Discard", freq[word], user, "Spam", word)
         elif len(word.decode('utf-8')) > 16:
-            log = u"{0}Discard{1} {3}{0} from{2} {4}{0}. Too long.".format(color[0],
-                                                                           color[1],
-                                                                           color[2],
-                                                                           word,
-                                                                           user)
-            log_context.prnt(log)
+            log_wc_update("Discard", freq[word], user, "Too long", word)
         elif word != " ":
-            log = u"{0}Log{1} {4}{0} from{2} {5}{0}. Count ={3} {6}".format(color[0],
-                                                                            color[1],
-                                                                            color[2],
-                                                                            color[3],
-                                                                            word,
-                                                                            user,
-                                                                            freq[word])
-            log_context.prnt(log)
+            log_wc_update("Log", freq[word], user, "", word)
             wc_update_sql(data['nick'], word.decode('utf-8'), freq[word])
     db_connection.commit()
+
+def log_wc_update(action, count, user, reason, word):
+    """ Print to screen the results of wc_update """
+    log_context = find_log_tab()
+    color = ["\0030", "\0032", "\0037", "\0034"]
+
+    if action == "Log":
+        reason = "Count ={0} {1}".format(color[3], count)
+
+    log = u"{c0}{act}{c1} {wrd}{c0} from{c2} {usr}{c0}. {rsn}".format(c0=color[0],
+                                                                      c1=color[1],
+                                                                      c2=color[2],
+                                                                      act=action,
+                                                                      usr=user,
+                                                                      rsn=reason,
+                                                                      wrd=word)
+    log_context.prnt(log)
             
 def wc_update_sql(user, word, count): 
     # sqlite3 does not support UPSERT, instead SELECT for existing field
