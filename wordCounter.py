@@ -94,14 +94,25 @@ def unload_cb(userdata):
     db_connection.close()
     hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been unloaded.")
 
-def deleteuser_cb(word, word_eol, userdata):
+def delete_user_cb(word, word_eol, userdata):
     """ Delete user from dictionary """
     nick = word_eol[1]
     sql_query = ("DELETE FROM WordCount "
                  "WHERE user=?")
     db_cursor.execute(sql_query, (nick,))
     db_connection.commit()
-    print "Deleted {0} from word count dictionary".format(nick)
+    print "Deleted {0} from WC database".format(nick)
+    return hexchat.EAT_ALL
+
+def delete_entry_cb(word, word_eol, userdata):
+    """ Delete specific database entry """
+    nick = word[1]
+    word = word[2]
+    sql_query = ("DELETE FROM WordCount "
+                 "WHERE user=? AND word=?")
+    db_cursor.execute(sql_query, (nick, word))
+    db_connection.commit()
+    print "Deleted {0}'s count of '{1}' from WC database".format(nick, word)
     return hexchat.EAT_ALL
 
 def break_nickname(nick):
@@ -270,6 +281,7 @@ def route(data):
 
 hexchat.hook_server('PRIVMSG', parse)
 hexchat.hook_unload(unload_cb)
-hexchat.hook_command("wc_delete", deleteuser_cb, help="/wc_delete [name] Removes user from database")
+hexchat.hook_command("wc_delete_user", delete_user_cb, help="/wc_delete_user [name] Removes user from database")
+hexchat.hook_command("wc_delete_entry", delete_entry_cb, help="/wc_delete_entry [name] [word] Removes entry from database")
 
 hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been loaded.")
