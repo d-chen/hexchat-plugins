@@ -196,8 +196,7 @@ def parse(word, word_eol, userdata):
         "channel" : str_data[3].decode('ascii').encode('utf-8'),
         "message" : str_data[4][1:].encode('utf-8')
         }
-    if not data['message'].startswith("!"):
-        db_update(data)
+    db_update(data)
     if data['nick'].lower() in ADMIN_ACCESS or not on_global_cooldown():
         route(data)
 
