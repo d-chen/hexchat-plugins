@@ -134,7 +134,7 @@ def wc_update(data):
     for word in freq:
         if word in STOP_WORDS or word.startswith("!") or word.startswith("http"):
             continue
-        elif freq[word] > 3:
+        elif freq[word] > 2:
             log_wc_update("Discard", freq[word], user, "Spam", word)
         elif len(word.decode('utf-8')) > 16:
             log_wc_update("Discard", freq[word], user, "Too long", word)
