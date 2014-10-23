@@ -173,27 +173,33 @@ def set_now_playing_source(source):
         return
         
     hexchat.command("say !sapmusic will now announce songs from Saprol's {0}".format(source))
-        
-def get_channel_views(channel):
+
+def get_stream_info(channel):
     url = 'https://api.twitch.tv/kraken/streams/{0}'.format(channel[1:]) # channel starts with hash
     headers = {'accept': 'application/vnd.twitchtv.v3+json'}
     resp = requests.get(url, headers=headers)
-    
+
     if not resp.status_code == 200:
         hexchat.command("say Twitch API is not currently available.")
         return
+    return resp.json()
+
+def is_stream_online(resp):
+    if resp['stream']:
+        return True
+    else:
+        return False
         
-    resp_json = resp.json()
-    if resp_json['stream']:
-        viewers = resp_json['stream']['viewers']
-        hexchat.command("say There are currently {0} viewers in this channel.".format(viewers))
+def get_channel_views(channel):
+    resp = get_stream_info(channel)
+
+    if is_stream_online(resp):
+        viewers = resp['stream']['viewers']
+        hexchat.command("say There are currently {0} viewers watching.".format(viewers))
     else:
         hexchat.command("say This stream is currently offline or Twitch API is down.")
 
-def create_twitch_bookmark(channel, bookmark_name):
-    with open(PASS_FILE, 'r') as file:
-        bot_password = file.read()
-
+def create_twitch_bookmark_title(channel, bookmark_name):
     title = bookmark_name.replace("!bookmark", "", 1).strip()
     if title:
         bookmark_title = title
@@ -203,7 +209,23 @@ def create_twitch_bookmark(channel, bookmark_name):
         pst_dt = pst_tz.normalize(utc_dt.astimezone(pst_tz))
         bookmark_title = pst_dt.strftime(time_fmt)
 
-    driver = webdriver.Firefox()
+    return bookmark_title
+
+def create_twitch_bookmark(channel, bookmark_name, nick):
+    resp = get_stream_info(channel)
+    if not is_stream_online(resp):
+        hexchat.command("say {user} -> Stream is not running.".format(user=nick))
+        return
+
+    hexchat.command("say {user} -> Attempting to create bookmark. Please wait.".format(user=nick))
+
+    with open(PASS_FILE, 'r') as file:
+        bot_password = file.read()
+
+    bookmark_title = create_twitch_bookmark_title(channel, bookmark_name)
+
+    driver = webdriver.PhantomJS(executable_path='E:\phantomjs-1.9.7-windows/phantomjs.exe')
+    driver.set_window_size(1600, 900)
     wait = WebDriverWait(driver, 15)
     try:
         driver.get("http://www.twitch.tv/{0}".format(channel[1:]))
