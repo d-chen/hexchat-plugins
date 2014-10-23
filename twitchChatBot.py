@@ -246,12 +246,14 @@ def create_twitch_bookmark(channel, bookmark_name, nick):
         driver.find_element_by_xpath("//button[@type='submit']").click()
         wait.until(lambda driver: driver.find_element_by_xpath("//input[contains(@value,\"twitch.tv/m/\")]"))
         bookmark_url = driver.find_element_by_xpath("//input[contains(@value,\"twitch.tv/m/\")]").get_attribute("value")
-        hexchat.command("say Bookmark \"{0}\" created: {1} | LTB Bookmarks: {2}".format(bookmark_title, 
-                                                                                        bookmark_url,
-                                                                                        "http://www.twitch.tv/low_tier_bot/profile/bookmarks"))
+        hexchat.command("say {user} -> Bookmark \"{name}\" created: {url} | Bookmarks: {list}".format(name=bookmark_title, 
+                                                                                                      url=bookmark_url,
+                                                                                                      user=nick,
+                                                                                                      list="http://www.twitch.tv/low_tier_bot/profile/bookmarks"))
     finally:
         driver.quit()
-        hexchat.command("say Unable to create bookmark \"{0}\".".format(bookmark_title))
+        hexchat.command("say {user} -> Unable to create bookmark \"{name}\".".format(name=bookmark_title,
+                                                                                     user=nick))
 
 def is_mod(nick):
     mod_list = hexchat.get_list("users")
@@ -315,7 +317,7 @@ def route(data):
 
     if cmd == "!bookmark":
         if not on_cooldown(data['nick']) and is_mod(data['nick']):
-            create_twitch_bookmark(data['channel'], data['message'])
+            create_twitch_bookmark(data['channel'], data['message'], data['nick'])
 
 hexchat.hook_unload(db_unload)
 hexchat.hook_server('PRIVMSG', parse)
