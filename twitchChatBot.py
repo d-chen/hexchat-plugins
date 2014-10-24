@@ -33,7 +33,7 @@ FB2K_NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/fb2k_nowPlaying_simple.t
 YOUTUBE_NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/nowplaying_youtube_chat.txt'
 PASS_FILE = "E:\Git/xchat-plugins/twitch_pass.txt"
 COOLDOWN_PER_USER = 12
-COOLDOWN_GENERAL = 8
+COOLDOWN_GENERAL = 10
 BOT_LIST = ["kazukimouto", "nightbot", "brettbot", "rise_bot", "dj_jm09", "palebot"]
 ADMIN_ACCESS = ["low_tier_bot", "saprol"] # debugging purposes
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
@@ -212,6 +212,7 @@ def create_twitch_bookmark_title(channel, bookmark_name):
     return bookmark_title
 
 def create_twitch_bookmark(channel, bookmark_name, nick):
+    """ No API feature -> Automate browser to create TwitchTV bookmark """
     resp = get_stream_info(channel)
     if not is_stream_online(resp):
         hexchat.command("say {user} -> Stream is not running.".format(user=nick))
