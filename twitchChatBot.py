@@ -87,17 +87,13 @@ def on_cooldown(nick):
         return False
     
     if cooldown_time > time_now:
-        print "Global cooldown is still up."
+        print "A command has been used too recently."
         return True
-
-    if nick not in last_use:
+    elif nick not in last_use:
         flood_update(nick)
         return False
     elif last_use[nick] > time_now:
         print nick + " has used a command too recently."
-        return True
-    elif cooldown_time > time_now:
-        print "A command has been used too recently."
         return True
     else:
         flood_update(nick)
