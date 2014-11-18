@@ -1,5 +1,5 @@
 __module_name__ = "TwitchTV Chat Bot"
-__module_version__ = "1.1"
+__module_version__ = "1.2"
 __module_description__ = "Miscellaneous chat bot features"
 
 import codecs
@@ -259,6 +259,13 @@ def is_mod(nick):
             return True
     return False
 
+def is_ignored(user):
+    ignore_list = hexchat.get_list("ignore")
+    for item in ignore_list:
+        if user in item.mask:
+            return True
+    return False
+
 def parse(word, word_eol, userdata):
     """ Prepare messages for processing """
     str_data = word_eol[0].replace("!"," ", 1).split(None,4)    
@@ -270,6 +277,8 @@ def parse(word, word_eol, userdata):
         "message" : str_data[4][1:].encode('utf-8')
         }
     db_update(data)
+    if is_ignored(data['nick']):
+        return
     if data['nick'].lower() in ADMIN_ACCESS or not on_global_cooldown():
         route(data)
 

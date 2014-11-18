@@ -254,10 +254,19 @@ def parse(word, word_eol, userdata):
         "channel" : str_data[3].decode('ascii').encode('utf-8'),
         "message" : str_data[4][1:].encode('utf-8')
         }
+    if is_ignored(data['nick']):
+       return 
     if not data['message'].startswith("!"):
        wc_update(data)
     if data['message'].startswith("!") and not on_cooldown():
-       route(data) 
+       route(data)
+
+def is_ignored(user):
+    ignore_list = hexchat.get_list("ignore")
+    for item in ignore_list:
+        if user in item.mask:
+            return True
+    return False
 
 def route(data):
     """ Handle command calls """
