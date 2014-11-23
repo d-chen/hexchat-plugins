@@ -322,8 +322,12 @@ def route(data):
             get_channel_views(data['channel'])
 
     if cmd == "!bookmark":
-        if not on_cooldown(data['nick']) and is_mod(data['nick']):
-            create_twitch_bookmark(data['channel'], data['message'], data['nick'])
+        if not on_cooldown(data['nick']):
+            if length == 1:
+                hexchat.command("say LTB Bookmarks: http://www.twitch.tv/low_tier_bot/profile/bookmarks")
+            elif length > 1 and is_mod(data['nick']):
+                create_twitch_bookmark(data['channel'], data['message'], data['nick'])
+            
 
 hexchat.hook_unload(db_unload)
 hexchat.hook_server('PRIVMSG', parse)
