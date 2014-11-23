@@ -120,6 +120,7 @@ def db_commit(userdata):
 def db_unload(userdata):
     db_connection.commit()
     db_connection.close()
+    hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been unloaded.")
 
 def db_update(data):
     """ Update the last time somebody was seen talking """
