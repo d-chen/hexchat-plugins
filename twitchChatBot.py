@@ -325,7 +325,7 @@ def route(data):
     if cmd == "!bookmark":
         if not on_cooldown(data['nick']):
             if length == 1:
-                hexchat.command("say LTB Bookmarks: http://www.twitch.tv/low_tier_bot/profile/bookmarks")
+                hexchat.command("say Usage: !bookmark [title] | Bookmarks: http://www.twitch.tv/low_tier_bot/profile/bookmarks")
             elif length > 1 and is_mod(data['nick']):
                 create_twitch_bookmark(data['channel'], data['message'], data['nick'])
             
