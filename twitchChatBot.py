@@ -32,8 +32,8 @@ def local_time():
 FB2K_NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/fb2k_nowPlaying_simple.txt'
 YOUTUBE_NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/nowplaying_youtube_chat.txt'
 PASS_FILE = "E:\Git/xchat-plugins/twitch_pass.txt"
-COOLDOWN_PER_USER = 12
-COOLDOWN_GENERAL = 10
+COOLDOWN_PER_USER = 8
+COOLDOWN_GENERAL = 6
 BOT_LIST = ["kazukimouto", "nightbot", "brettbot", "rise_bot", "dj_jm09", "palebot"]
 ADMIN_ACCESS = ["low_tier_bot", "saprol"] # debugging purposes
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times

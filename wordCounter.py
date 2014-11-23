@@ -50,7 +50,7 @@ def find_log_tab():
         return context
 
 # setup and constants
-COOLDOWN = 12
+COOLDOWN = 14
 DIR_PATH = hexchat.get_info("configdir")
 DB_PATH = DIR_PATH + "/WordCount.db"
 STOP_WORD_PATH = DIR_PATH + "/stop_words.csv"
