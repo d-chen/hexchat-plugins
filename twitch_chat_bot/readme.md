@@ -12,4 +12,4 @@ HexChat plugin that provides additional TwitchTV chat features in response to us
 * **!viewers**: Returns the current number of users watching this TwitchTV stream
 * **!bookmark <title>**: Automates creation of TwitchTV bookmark with given title
 * **!wctime**: Returns the local time for the west coast of North America. (PST/PDT)
-* **!jptime**: Returns the local time for Japan (PST)
+* **!jptime**: Returns the local time for Japan (JST)
