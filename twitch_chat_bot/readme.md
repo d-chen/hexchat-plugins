@@ -8,8 +8,8 @@ HexChat plugin that provides additional TwitchTV chat features in response to us
 
 #### Main Features:
 * Ignores excessive input from users to avoid TwitchTV ban for spam
-* **!seen <user>**: Returns the last line this user has said
+* **!seen [user]**: Returns the last line this user has said
 * **!viewers**: Returns the current number of users watching this TwitchTV stream
-* **!bookmark <title>**: Automates creation of TwitchTV bookmark with given title
+* **!bookmark [title]**: Automates creation of TwitchTV bookmark with given title
 * **!wctime**: Returns the local time for the west coast of North America. (PST/PDT)
 * **!jptime**: Returns the local time for Japan (JST)
