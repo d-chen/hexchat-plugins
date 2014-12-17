@@ -1,4 +1,4 @@
-﻿__module_name__ = "User Word Counter"
+__module_name__ = "User Word Counter"
 __module_version__ = "2.0"
 __module_description__ = "Records the times a user has said a word"
 
@@ -58,7 +58,7 @@ STOP_WORDS = load_stop_words(STOP_WORD_PATH)
 LOG_CONTEXT_NAME = ":wordcount:"
 LOG_CONTEXT = hexchat.find_context(LOG_CONTEXT_NAME)
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
-REGEX = re.compile(r'\W+')
+UNI_RE = re.compile(r'[^\W\d_]+', re.UNICODE) # match groups of unicode letters
 HTTP_RE = re.compile(r'https?:\/\/.*[\r\n]*') # re.sub() remove URLs
 CMD_RE = re.compile(r'\!\w+\s') # remove other chat commands
 
@@ -126,7 +126,7 @@ def wc_update(data):
     """ Update count of words said by user """
     msg_no_cmds = CMD_RE.sub(' ', data['message'].lower())
     msg_no_urls = HTTP_RE.sub('', msg_no_cmds)
-    result = filter(lambda x: len(x.decode('utf-8')) > 2, REGEX.split(msg_no_urls))
+    result = filter(lambda x: len(x.decode('utf-8')) > 2, UNI_RE.findall(msg_no_urls))
     freq = Counter(result)
     user = data['nick']
     log_context = find_log_tab()
