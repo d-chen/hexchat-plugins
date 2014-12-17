@@ -197,19 +197,20 @@ def user_top_words(caller, nick):
     db_cursor.execute(sql_query, (nick.lower(),))
     results = db_cursor.fetchall()
 
-    msg_command = "say {0} -> This user's top words: ".format(caller) + report_list(results, False)
-    hexchat.command(msg_command)
+    msg = "say {0} -> This user's top words: ".format(caller) + report_list(results, False)
+    hexchat.command(msg)
     cooldown_update()
 
 def word_top_users(caller, word):
     """ Return the top ?? users that have said word """
     if len(word) < 3:
-        hexchat.command("say Words longer than 2 letters are recorded.")
+        hexchat.command("say {0} -> Words longer than 2 letters are recorded.".format(caller))
         cooldown_update()
         return
 
     if word in STOP_WORDS or word.startswith("!"):
-        hexchat.command("say '" + word + "' is excluded for being too common or part of another chat command.")
+        msg = "say {0} -> '{1}' is excluded for being too common or another command.".format(caller, word)
+        hexchat.command(msg)
         cooldown_update()
         return
 
@@ -222,11 +223,11 @@ def word_top_users(caller, word):
     results = db_cursor.fetchall()
 
     results_str = report_list(results, True)
-    msg_command = "say {0} -> Top users of '{1}': {2}".format(caller, word.lower(), results_str)
-    hexchat.command(msg_command)
+    msg = "say {0} -> Top users of '{1}': {2}".format(caller, word.lower(), results_str)
+    hexchat.command(msg)
     cooldown_update()
 
-def most_spoken_words():
+def most_spoken_words(caller):
     """ Return the top 10 words said by all users """
     sql_query = ("SELECT word, count "
                  "FROM EveryUser "
@@ -235,8 +236,8 @@ def most_spoken_words():
     db_cursor.execute(sql_query)
     results = db_cursor.fetchall()
     
-    msg_command = "say Top words recorded: " + report_list(results, False)
-    hexchat.command(msg_command)
+    msg = "say {0} -> Top words recorded: {1}".format(caller) + report_list(results, False)
+    hexchat.command(msg)
     cooldown_update()
 
 def wc_print_usage():
@@ -276,7 +277,7 @@ def route(data):
     if cmd_data[0] != "!words":
         return
     elif length >= 2 and cmd_data[1] == "everyone":
-            most_spoken_words()
+            most_spoken_words(data['nick'])
     elif length >= 3:
         if cmd_data[1] == "user":
             user_top_words(data['nick'], cmd_data[2])
