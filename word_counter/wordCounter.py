@@ -242,9 +242,10 @@ def most_spoken_words(caller):
     hexchat.command(msg)
     cooldown_update()
 
-def wc_print_usage():
+def wc_print_usage(caller):
     """ Print syntax for using !words commands """
-    hexchat.command("say " + "Examples: !words user [USERNAME] / !words word [WORD] / !words everyone")
+    msg = "say {0} -> Usage: !words user [USERNAME] / !words word [WORD] / !words everyone".format(caller)
+    hexchat.command(msg)
     cooldown_update()
 
 def parse(word, word_eol, userdata):
@@ -286,9 +287,9 @@ def route(data):
         elif cmd_data[1] == "word":
             word_top_users(data['nick'], cmd_data[2])
         else:
-            wc_print_usage()
+            wc_print_usage(data['nick'])
     else:
-        wc_print_usage()
+        wc_print_usage(data['nick'])
 
 
 hexchat.hook_server('PRIVMSG', parse)
