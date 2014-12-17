@@ -50,7 +50,8 @@ def find_log_tab():
         return context
 
 # setup and constants
-COOLDOWN = 14
+COOLDOWN = 12
+MAX_CHAR_LENGTH = 16
 DIR_PATH = hexchat.get_info("configdir")
 DB_PATH = DIR_PATH + "/WordCount.db"
 STOP_WORD_PATH = DIR_PATH + "/stop_words.csv"
@@ -136,7 +137,7 @@ def wc_update(data):
             continue
         elif freq[word] > 2:
             log_wc_update("Discard", freq[word], user, "Spam", word)
-        elif len(word.decode('utf-8')) > 16:
+        elif len(word.decode('utf-8')) > MAX_CHAR_LENGTH:
             log_wc_update("Discard", freq[word], user, "Too long", word)
         elif word != " ":
             log_wc_update("Log", freq[word], user, "", word)
@@ -203,8 +204,9 @@ def user_top_words(caller, nick):
 
 def word_top_users(caller, word):
     """ Return the top ?? users that have said word """
-    if len(word) < 3:
-        hexchat.command("say {0} -> Words longer than 2 letters are recorded.".format(caller))
+
+    if len(word) < 3 or len(word) > MAX_CHAR_LENGTH:
+        hexchat.command("say {0} -> Words of length 3 to {1} are recorded.".format(caller, MAX_CHAR_LENGTH))
         cooldown_update()
         return
 
