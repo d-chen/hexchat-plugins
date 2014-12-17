@@ -216,6 +216,12 @@ def word_top_users(caller, word):
         cooldown_update()
         return
 
+    if not word.isalpha():
+        msg = "say {0} -> Numbers and punctuation are not included in records.".format(caller)
+        hexchat.command(msg)
+        cooldown_update()
+        return
+
     sql_query = ("SELECT user, count "
                  "FROM WordCount "
                  "WHERE word=? "
