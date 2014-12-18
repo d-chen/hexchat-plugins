@@ -59,7 +59,7 @@ STOP_WORDS = load_stop_words(STOP_WORD_PATH)
 LOG_CONTEXT_NAME = ":wordcount:"
 LOG_CONTEXT = hexchat.find_context(LOG_CONTEXT_NAME)
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
-UNI_RE = re.compile(r'[^\W\d_]+', re.UNICODE) # match groups of unicode letters
+UNI_RE = re.compile(r'[^\W\d_]+') # match groups of unicode letters
 HTTP_RE = re.compile(r'https?:\/\/.*[\r\n]*') # re.sub() remove URLs
 CMD_RE = re.compile(r'\!\w+\s') # remove other chat commands
 
