@@ -72,7 +72,8 @@ db_cursor.execute(("CREATE TABLE IF NOT EXISTS WordCount (user TEXT, "
                                                          "count INTEGER, "
                                                          "UNIQUE(user, word) ON CONFLICT REPLACE)"))
 db_cursor.execute(("CREATE TABLE IF NOT EXISTS EveryUser (word TEXT UNIQUE, count INTEGER)"))
-
+db_cursor.execute(("CREATE INDEX IF NOT EXISTS idx_UserTop ON WordCount(user, word)"))
+db_cursor.execute(("CREATE INDEX IF NOT EXISTS idx_WordTop ON WordCount(word, count)"))
 
 
 def on_cooldown():
