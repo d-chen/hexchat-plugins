@@ -245,7 +245,7 @@ def most_spoken_words(caller):
     db_cursor.execute(sql_query)
     results = db_cursor.fetchall()
     
-    msg = "say {0} -> Top words recorded: {1}".format(caller) + report_list(results, False)
+    msg = "say {0} -> Top words recorded: {1}".format(caller, report_list(results, False))
     hexchat.command(msg)
     cooldown_update()
 
