@@ -12,7 +12,6 @@ import hexchat
 import pytz
 import requests
 from selenium import webdriver
-from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -216,40 +215,52 @@ def create_twitch_bookmark(channel, bookmark_name, nick):
         return
 
     hexchat.command("say {user} -> Attempting to create bookmark. Please wait.".format(user=nick))
+    driver = webdriver.Chrome(executable_path="E:\chromedriver.exe")
+    driver.set_window_size(1280, 720)
+    wait = WebDriverWait(driver, 15)    
 
     with open(PASS_FILE, 'r') as file:
         bot_password = file.read()
 
     bookmark_title = create_twitch_bookmark_title(channel, bookmark_name)
-
-    driver = webdriver.PhantomJS(executable_path='E:\phantomjs-1.9.7-windows/phantomjs.exe')
-    driver.set_window_size(1600, 900)
-    wait = WebDriverWait(driver, 15)
+    username_field = "login_user_login"
+    password_field = "user[password]"
+    bookmark_xpath = "//span[text()=\"Bookmark\"]"
+    title_xpath = "//input[contains(@class, \"js-title\")]"
+    submit_xpath = '//button[@type="submit"]'
+    result_xpath = "//input[contains(@value,\"twitch.tv/m/\")]"
+    created_bookmark = False
+    
     try:
         driver.get("http://www.twitch.tv/{0}".format(channel[1:]))
         # Login
         driver.find_element_by_xpath("//span[text()=\"Log In\"]").click()
-        wait.until(lambda driver: driver.find_element_by_id("login_user_login"))
-        driver.find_element_by_id("login_user_login").clear()
-        driver.find_element_by_id("login_user_login").send_keys("low_tier_bot")
-        driver.find_element_by_id("user[password]").clear()
-        driver.find_element_by_id("user[password]").send_keys(bot_password)
-        driver.find_element_by_xpath("(//button[contains(text(), 'Log In')])").click()
+        wait.until(lambda driver: driver.find_element_by_id(username_field))
+        driver.find_element_by_id(username_field).clear()
+        driver.find_element_by_id(username_field).send_keys("low_tier_bot")
+        driver.find_element_by_id(password_field).clear()
+        driver.find_element_by_id(password_field).send_keys(bot_password)
+        driver.find_element_by_xpath("//button[contains(text(), 'Log In')]").click()
 
         # Create bookmark
-        driver.find_element_by_xpath("//span[text()=\"Bookmark\"]").click()
-        wait.until(lambda driver: driver.find_element_by_xpath("(//input[contains(@class, \"js-title\")])"))
-        driver.find_element_by_xpath("(//input[contains(@class, \"js-title\")])").clear()
-        driver.find_element_by_xpath("(//input[contains(@class, \"js-title\")])").send_keys(bookmark_title)
-        driver.find_element_by_xpath("//button[@type='submit']").click()
-        wait.until(lambda driver: driver.find_element_by_xpath("//input[contains(@value,\"twitch.tv/m/\")]"))
-        bookmark_url = driver.find_element_by_xpath("//input[contains(@value,\"twitch.tv/m/\")]").get_attribute("value")
-        hexchat.command("say {user} -> Bookmark \"{name}\" created: {url} | Bookmarks: {list}".format(name=bookmark_title, 
-                                                                                                      url=bookmark_url,
-                                                                                                      user=nick,
-                                                                                                      list="http://www.twitch.tv/low_tier_bot/profile/bookmarks"))
+        wait.until(lambda driver: driver.find_element_by_xpath(bookmark_xpath))
+        driver.find_element_by_xpath(bookmark_xpath).click()
+        wait.until(lambda driver: driver.find_element_by_xpath(title_xpath))
+        title_form = driver.find_element_by_xpath(title_xpath)
+        title_form.clear()
+        title_form.send_keys(bookmark_title)
+        driver.find_element_by_xpath(submit_xpath).click()
+        wait.until(lambda driver: driver.find_element_by_xpath(result_xpath))
+        bookmark_url = driver.find_element_by_xpath(result_xpath).get_attribute("value")
+        created_bookmark = True
+        hexchat.command("say {user} -> Bookmark \"{name}\" created: {url} | {list}".format(name=bookmark_title, 
+                                                                                           url=bookmark_url,
+                                                                                           user=nick,
+                                                                                           list="http://www.twitch.tv/low_tier_bot/profile/bookmarks"))
     finally:
         driver.quit()
+        
+    if not created_bookmark:
         hexchat.command("say {user} -> Unable to create bookmark \"{name}\".".format(name=bookmark_title,
                                                                                      user=nick))
 
