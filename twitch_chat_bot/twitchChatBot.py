@@ -11,14 +11,12 @@ import sys
 
 import hexchat
 import requests
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
 
 sys.path.append(os.path.join(
     hexchat.get_info('configdir'), 'addons', 'modules'))
 
 import timemod as Time
+import twitchmod as Twitch
 
 # HACK: Set default encoding to UTF-8
 if (sys.getdefaultencoding() != "utf-8"):
@@ -150,100 +148,6 @@ def set_now_playing_source(source):
         
     hexchat.command("say !sapmusic will now announce songs from Saprol's {0}".format(source))
 
-def get_stream_info(channel):
-    url = 'https://api.twitch.tv/kraken/streams/{0}'.format(channel[1:]) # channel starts with hash
-    headers = {'accept': 'application/vnd.twitchtv.v3+json'}
-    resp = requests.get(url, headers=headers)
-
-    if not resp.status_code == 200:
-        hexchat.command("say Twitch API is not currently available.")
-        return
-    return resp.json()
-
-def is_stream_online(resp):
-    if resp['stream']:
-        return True
-    else:
-        return False
-        
-def get_channel_views(channel):
-    resp = get_stream_info(channel)
-
-    if is_stream_online(resp):
-        viewers = resp['stream']['viewers']
-        hexchat.command("say There are currently {0} viewers watching.".format(viewers))
-    else:
-        hexchat.command("say This stream is currently offline or Twitch API is down.")
-
-def create_twitch_bookmark_title(channel, bookmark_name):
-    title = bookmark_name.replace("!bookmark", "", 1).strip()
-    if title:
-        bookmark_title = title
-    else:
-        utc_dt = utc_time()
-        pst_tz = pytz.timezone('Canada/Pacific')
-        pst_dt = pst_tz.normalize(utc_dt.astimezone(pst_tz))
-        bookmark_title = pst_dt.strftime(time_fmt)
-
-    return bookmark_title
-
-def create_twitch_bookmark(channel, bookmark_name, nick):
-    """ No API feature -> Automate browser to create TwitchTV bookmark """
-    resp = get_stream_info(channel)
-    if not is_stream_online(resp):
-        hexchat.command("say {user} -> Stream is not running.".format(user=nick))
-        return
-
-    hexchat.command("say {user} -> Attempting to create bookmark. Please wait.".format(user=nick))
-    driver = webdriver.Chrome(executable_path="E:\chromedriver.exe")
-    driver.set_window_size(1280, 720)
-    wait = WebDriverWait(driver, 15)    
-
-    with open(PASS_FILE, 'r') as file:
-        bot_password = file.read()
-
-    bookmark_title = create_twitch_bookmark_title(channel, bookmark_name)
-    username_field = "login_user_login"
-    password_field = "user[password]"
-    bookmark_xpath = "//span[text()=\"Bookmark\"]"
-    title_xpath = "//input[contains(@class, \"js-title\")]"
-    submit_xpath = '//button[@type="submit"]'
-    result_xpath = "//input[contains(@value,\"twitch.tv/m/\")]"
-    created_bookmark = False
-    
-    try:
-        driver.get("http://www.twitch.tv/{0}".format(channel[1:]))
-        # Login
-        driver.find_element_by_xpath("//span[text()=\"Log In\"]").click()
-        wait.until(lambda driver: driver.find_element_by_id(username_field))
-        driver.find_element_by_id(username_field).clear()
-        driver.find_element_by_id(username_field).send_keys("low_tier_bot")
-        driver.find_element_by_id(password_field).clear()
-        driver.find_element_by_id(password_field).send_keys(bot_password)
-        driver.find_element_by_xpath("//button[contains(text(), 'Log In')]").click()
-
-        # Create bookmark
-        wait.until(lambda driver: driver.find_element_by_xpath(bookmark_xpath))
-        driver.find_element_by_xpath(bookmark_xpath).click()
-        wait.until(lambda driver: driver.find_element_by_xpath(title_xpath))
-        title_form = driver.find_element_by_xpath(title_xpath)
-        title_form.clear()
-        title_form.send_keys(bookmark_title)
-        driver.find_element_by_xpath(submit_xpath).click()
-        wait.until(lambda driver: driver.find_element_by_xpath(result_xpath))
-        bookmark_url = driver.find_element_by_xpath(result_xpath).get_attribute("value")
-        created_bookmark = True
-        hexchat.command("say {user} -> Bookmark \"{name}\" created: {url} | {list}".format(name=bookmark_title, 
-                                                                                           url=bookmark_url,
-                                                                                           user=nick,
-                                                                                           list="http://www.twitch.tv/low_tier_bot/profile/bookmarks"))
-    finally:
-        driver.quit()
-        
-    if not created_bookmark:
-        hexchat.command("say {user} -> Unable to create bookmark \"{name}\".".format(name=bookmark_title,
-                                                                                     user=nick))
-
 def is_mod(nick):
     mod_list = hexchat.get_list("users")
     for i in mod_list:
@@ -315,14 +219,14 @@ def route(data):
             
     if cmd == '!viewers':
         if not on_cooldown(data['nick']):
-            get_channel_views(data['channel'])
+            say(Twitch.get_channel_views(data['channel']))
 
     if cmd == "!bookmark":
         if not on_cooldown(data['nick']):
             if length == 1:
                 hexchat.command("say Usage: !bookmark [title] | Bookmarks: http://www.twitch.tv/low_tier_bot/profile/bookmarks")
             elif length > 1 and is_mod(data['nick']):
-                create_twitch_bookmark(data['channel'], data['message'], data['nick'])
+                Twitch.create_twitch_bookmark(data['channel'], data['message'], data['nick'], PASS_FILE)
             
 
 hexchat.hook_unload(db_unload)
