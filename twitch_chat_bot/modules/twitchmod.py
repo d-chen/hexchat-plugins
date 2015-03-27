@@ -6,9 +6,20 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 
+def is_valid_resp(resp):
+    if resp.status_code == 200:
+        return True
+    return False
+
 def get_stream_info(channel):
-    url = 'https://api.twitch.tv/kraken/streams/{0}'.format(channel[1:]) # channel starts with hash
+    url = 'https://api.twitch.tv/kraken/streams/{0}'.format(channel)
     headers = {'accept': 'application/vnd.twitchtv.v3+json'}
+    resp = requests.get(url, headers=headers)
+    return resp
+
+def get_host_info(channel):
+    url = 'http://chatdepot.twitch.tv/rooms/{0}/host_target'.format(channel)
+    headers = {'accept': 'application/json'}
     resp = requests.get(url, headers=headers)
     return resp
 
@@ -18,19 +29,42 @@ def is_stream_online(resp):
     else:
         return False
         
-def get_channel_views(channel):
+def get_channel_views(channel, nick):
     resp = get_stream_info(channel)
-
-    if not resp.status_code == 200:
-    	return "Twitch API is not currently available."
-
     resp_json = resp.json()
-
+    if not is_valid_resp(resp):
+        return "{0} -> Twitch API is not currently available.".format(nick)
+    
     if is_stream_online(resp_json):
         viewers = resp_json['stream']['viewers']
-        return "There are currently {0} viewers watching.".format(viewers)
+        return "{1} -> Currently {0} viewers are watching.".format(viewers, nick)
     else:
-    	return "This stream is currently offline."
+        return "{0} -> This stream is currently offline.".format(nick)
+
+def get_hosted_channel(channel, nick):
+    resp = get_host_info(channel)
+    resp_json = resp.json()
+    if not is_valid_resp(resp):
+        return "{0} -> Twitch API is not currently available.".format(nick)
+    
+    hosted_chan = resp_json['host_target']
+    if hosted_chan:
+        host_resp = get_stream_info(hosted_chan)
+        host_info = host_resp.json()
+
+        if not is_valid_resp(host_resp):
+            return "{0} -> Twitch API is not currently available.".format(nick)
+
+        if not is_stream_online(host_info):
+            return "{1} -> Currently hosting {0}. Stream is offline.".format(hosted_chan, nick)
+
+        name = host_info['stream']['channel']['display_name']
+        status = host_info['stream']['channel']['status']
+        game = host_info['stream']['channel']['game']
+        return "{3} -> Currently hosting {0} playing {1} | {2}".format(
+            name, game, status, nick)
+    return ""
+
 
 def create_twitch_bookmark_title(channel, bookmark_name):
     title = bookmark_name.replace("!bookmark", "", 1).strip()

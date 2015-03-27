@@ -219,7 +219,15 @@ def route(data):
             
     if cmd == '!viewers':
         if not on_cooldown(data['nick']):
-            say(Twitch.get_channel_views(data['channel']))
+            # channel starts with hash
+            say(Twitch.get_channel_views(data['channel'][1:], data['nick']))
+
+    if cmd == "!status":
+        if not on_cooldown(data['nick']):
+            # channel starts with hash
+            response = Twitch.get_hosted_channel(data['channel'][1:], data['nick'])
+            if response:
+                say(response)
 
     if cmd == "!bookmark":
         if not on_cooldown(data['nick']):
