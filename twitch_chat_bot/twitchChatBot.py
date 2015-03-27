@@ -1,5 +1,5 @@
 __module_name__ = "TwitchTV Chat Bot"
-__module_version__ = "1.2"
+__module_version__ = "1.3"
 __module_description__ = "Miscellaneous chat bot features"
 
 import codecs
@@ -82,6 +82,7 @@ def break_nickname(nick):
     return new_nick
 
 def say(line):
+    """ Send message to current channel """
     hexchat.command("say " + line)
 
 # database setup
@@ -116,9 +117,9 @@ def seen(searcher, target):
     db_cursor.execute(sql_query, (target_str,)) # need that comma to make 1-arg tuples
     row = db_cursor.fetchone()
     if row:
-        hexchat.command("say {0} -> ".format(searcher) + row[0])
+        say("{0} -> {1}".format(searcher, row[0]))
     else:
-        hexchat.command("say Could not find records of " + target)
+        say("{0} -> Could not find records of {1}".format(searcher, target))
 
 def now_playing():
     """ Announce current song playing, through generated .txt """
@@ -131,7 +132,7 @@ def now_playing():
     try:
         with open(now_playing_file, 'r') as file:
             title = file.read()
-            hexchat.command('say [Saprol\'s {0}] {1}'.format(now_playing_source, title))
+            say("[Saprol\'s {0}] {1}".format(now_playing_source, title))
     except IOError as error:
         print 'ERROR: Could not read ' + now_playing_file
 
@@ -143,10 +144,10 @@ def set_now_playing_source(source):
     elif source.lower() == 'YouTube'.lower():
         now_playing_source = 'YouTube'
     else:
-        hexchat.command("say {0} is an invalid option for !sapmusic".format(source))
+        say("{0} is an invalid option for !sapmusic".format(source))
         return
         
-    hexchat.command("say !sapmusic will now announce songs from Saprol's {0}".format(source))
+    say("!sapmusic will now announce songs from {0}".format(source))
 
 def is_mod(nick):
     mod_list = hexchat.get_list("users")
@@ -186,18 +187,20 @@ def route(data):
     
     if cmd == '!ltb':
         if not on_cooldown(data['nick']):
-            hexchat.command("say " + data['nick'] + " -> Current active commands: !bookmark !viewers !seen !jptime !wctime !ectime !sapmusic")
+            msg = "{0} -> Commands: !bookmark !viewers !seen !jptime !wctime !ectime".format(data['nick'])
+            say(msg)
                 
     if cmd == '!seen':
         if on_cooldown(data['nick']):
             return
         elif length == 2:
             if command_data[1].lower() in BOT_LIST:
-                hexchat.command("say " + data['nick'] + " -> No messing with other bots.")
+                msg = "{0} -> No messing with other bots.".format(data['nick'])
+                say(msg)
                 return
             seen(data['nick'], command_data[1])
         else:
-            hexchat.command("say Usage: !seen NICKNAME")
+            say("Usage: !seen NICKNAME")
 
     if cmd == "!wctime":
         if not on_cooldown(data['nick']):
@@ -232,7 +235,8 @@ def route(data):
     if cmd == "!bookmark":
         if not on_cooldown(data['nick']):
             if length == 1:
-                hexchat.command("say Usage: !bookmark [title] | Bookmarks: http://www.twitch.tv/low_tier_bot/profile/bookmarks")
+                msg = "{0} -> Usage: !bookmark TITLE | http://www.twitch.tv/low_tier_bot/profile/bookmarks".format([data'nick'])
+                say(msg)
             elif length > 1 and is_mod(data['nick']):
                 Twitch.create_twitch_bookmark(data['channel'], data['message'], data['nick'], PASS_FILE)
             

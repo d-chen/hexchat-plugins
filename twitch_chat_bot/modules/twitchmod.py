@@ -18,6 +18,7 @@ def get_stream_info(channel):
     return resp
 
 def get_host_info(channel):
+    """ Undocumented API. Subject to change/removal without notice """
     url = 'http://chatdepot.twitch.tv/rooms/{0}/host_target'.format(channel)
     headers = {'accept': 'application/json'}
     resp = requests.get(url, headers=headers)
