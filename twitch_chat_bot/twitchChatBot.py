@@ -4,16 +4,21 @@ __module_description__ = "Miscellaneous chat bot features"
 
 import codecs
 import datetime
+import os
 import string
 import sqlite3
 import sys
 
 import hexchat
-import pytz
 import requests
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
+
+sys.path.append(os.path.join(
+    hexchat.get_info('configdir'), 'addons', 'modules'))
+
+import timemod as Time
 
 # HACK: Set default encoding to UTF-8
 if (sys.getdefaultencoding() != "utf-8"):
@@ -22,11 +27,6 @@ if (sys.getdefaultencoding() != "utf-8"):
     sys.setdefaultencoding('utf-8')
     sys.stdout = codecs.getwriter('utf-8')(oldout)  # Set old stdout
     sys.stderr = codecs.getwriter('utf-8')(olderr)  # Set old stderr
-
-def local_time():
-    """ Return current time according to the Pacific time zone """
-    loc_dt = datetime.datetime.now(pytz.timezone('US/Pacific'))
-    return loc_dt
 
 FB2K_NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/fb2k_nowPlaying_simple.txt'
 YOUTUBE_NOW_PLAYING_FILE = 'E:\Pictures\Stream\currentsong/nowplaying_youtube_chat.txt'
@@ -37,42 +37,19 @@ BOT_LIST = ["kazukimouto", "nightbot", "brettbot", "rise_bot", "dj_jm09", "paleb
 ADMIN_ACCESS = ["low_tier_bot", "saprol"] # debugging purposes
 LOW_WIDTH_SPACE = u"\uFEFF" # insert into nicknames to avoid highlighting user extra times
 now_playing_source = 'FB2K'
-cooldown_time = local_time()
+cooldown_time = Time.local_time()
 last_use = {}
-time_fmt = "%H:%M %Z. %B %d, %Y"
-
-def utc_time():
-    """ Return current time in UTC """
-    utc_dt = datetime.datetime.utcnow()
-    utc_dt = utc_dt.replace(tzinfo=pytz.timezone('UTC'))
-    return utc_dt
-    
-def pacific_time():
-    """ Sends current time of Pacific time zone to chat """
-    utc_dt = utc_time()
-    
-    pst_tz = pytz.timezone('Canada/Pacific')
-    pst_dt = pst_tz.normalize(utc_dt.astimezone(pst_tz))
-    hexchat.command("say Local time in Vancouver: " + pst_dt.strftime(time_fmt))
-
-def japan_time():
-    """ Sends current time of Japan to chat """
-    utc_dt = utc_time()
-
-    jpn_tz = pytz.timezone('Japan')
-    jpn_dt = jpn_tz.normalize(utc_dt.astimezone(jpn_tz))
-    hexchat.command("say Local time in Japan: " + jpn_dt.strftime(time_fmt))
 
 def flood_update(nick):
     """ Update earliest time a new command can be called """
     global cooldown_time
-    time_now = local_time()
+    time_now = Time.local_time()
     cooldown_time = time_now + datetime.timedelta(seconds=COOLDOWN_GENERAL)
     last_use[nick] = time_now + datetime.timedelta(seconds=COOLDOWN_PER_USER)
 
 def on_global_cooldown():
     """ Return true if script has made a response recently """
-    time_now = local_time()
+    time_now = Time.local_time()
     if cooldown_time > time_now:
         return True
     else:
@@ -80,7 +57,7 @@ def on_global_cooldown():
 
 def on_cooldown(nick):
     """ Return true if a command has been used too recently """
-    time_now = local_time()
+    time_now = Time.local_time()
 
     if nick.lower() in ADMIN_ACCESS:
         return False
@@ -106,6 +83,9 @@ def break_nickname(nick):
         new_nick += LOW_WIDTH_SPACE
     return new_nick
 
+def say(line):
+    hexchat.command("say " + line)
+
 # database setup
 db_path = hexchat.get_info("configdir") + "/seen.db"
 db_connection = sqlite3.connect(db_path)
@@ -123,7 +103,7 @@ def db_unload(userdata):
 
 def db_update(data):
     """ Update the last time somebody was seen talking """
-    time_now = local_time().strftime('%b %d, %Y at %H:%M %Z')
+    time_now = Time.local_time().strftime('%b %d, %Y at %H:%M %Z')
 
     msg = u'This user was last seen saying \'{msg}\' on {date}'.format(msg=data['message'], 
                                                                        date=time_now)
@@ -302,7 +282,7 @@ def route(data):
     
     if cmd == '!ltb':
         if not on_cooldown(data['nick']):
-            hexchat.command("say " + data['nick'] + " -> Current active commands: !bookmark !viewers !seen !jptime !wctime !sapmusic")
+            hexchat.command("say " + data['nick'] + " -> Current active commands: !bookmark !viewers !seen !jptime !wctime !ectime !sapmusic")
                 
     if cmd == '!seen':
         if on_cooldown(data['nick']):
@@ -317,11 +297,15 @@ def route(data):
 
     if cmd == "!wctime":
         if not on_cooldown(data['nick']):
-            pacific_time()
+            say(Time.pacific_time())
+
+    if cmd == "!ectime":
+        if not on_cooldown(data['nick']):
+            say(Time.eastern_time())
             
     if cmd == '!jptime':
         if not on_cooldown(data['nick']):
-            japan_time()
+            say(Time.japan_time())
 
     if cmd == '!sapmusic':
         if length == 2 and data['nick'] in ADMIN_ACCESS:
