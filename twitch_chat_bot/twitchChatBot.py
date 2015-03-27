@@ -163,8 +163,7 @@ def is_ignored(user):
             return True
     return False
 
-def parse(word, word_eol, userdata):
-    """ Prepare messages for processing """
+def parse(word_eol):
     str_data = word_eol[0].replace("!"," ", 1).split(None,4)    
     data = {
         "nick" : str_data[0].lstrip(":").lower().decode('ascii').encode('utf-8'),
@@ -173,6 +172,11 @@ def parse(word, word_eol, userdata):
         "channel" : str_data[3].decode('ascii').encode('utf-8'),
         "message" : str_data[4][1:].encode('utf-8')
         }
+    return data
+
+def process(word, word_eol, userdata):
+    data = parse(word_eol)
+
     if is_ignored(data['nick']):
         return
     db_update(data)
@@ -235,14 +239,14 @@ def route(data):
     if cmd == "!bookmark":
         if not on_cooldown(data['nick']):
             if length == 1:
-                msg = "{0} -> Usage: !bookmark TITLE | http://www.twitch.tv/low_tier_bot/profile/bookmarks".format([data'nick'])
+                msg = "{0} -> Usage: !bookmark TITLE | http://www.twitch.tv/low_tier_bot/profile/bookmarks".format(data['nick'])
                 say(msg)
             elif length > 1 and is_mod(data['nick']):
                 Twitch.create_twitch_bookmark(data['channel'], data['message'], data['nick'], PASS_FILE)
             
 
 hexchat.hook_unload(db_unload)
-hexchat.hook_server('PRIVMSG', parse)
+hexchat.hook_server('PRIVMSG', process)
 hexchat.hook_timer(120000, db_commit)
 
 hexchat.prnt(__module_name__ + " v" + __module_version__ + " has been loaded.")
