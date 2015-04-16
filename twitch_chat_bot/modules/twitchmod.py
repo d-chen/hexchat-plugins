@@ -19,7 +19,7 @@ def get_stream_info(channel):
 
 def get_host_info(channel):
     """ Undocumented API. Subject to change/removal without notice """
-    url = 'http://chatdepot.twitch.tv/rooms/{0}/host_target'.format(channel)
+    url = 'http://api.twitch.tv/api/users/saprol/followed/hosting'
     headers = {'accept': 'application/json'}
     resp = requests.get(url, headers=headers)
     return resp
@@ -47,23 +47,22 @@ def get_hosted_channel(channel, nick):
     resp_json = resp.json()
     if not is_valid_resp(resp):
         return "{0} -> Twitch API is not currently available.".format(nick)
-    
-    hosted_chan = resp_json['host_target']
-    if hosted_chan:
-        host_resp = get_stream_info(hosted_chan)
-        host_info = host_resp.json()
 
-        if not is_valid_resp(host_resp):
-            return "{0} -> Twitch API is not currently available.".format(nick)
+    if resp_json['_total'] == 0:
+        return ""
 
-        if not is_stream_online(host_info):
-            return "{1} -> Currently hosting {0}. Stream is offline.".format(hosted_chan, nick)
-
-        name = host_info['stream']['channel']['display_name']
-        status = host_info['stream']['channel']['status']
-        game = host_info['stream']['channel']['game']
-        return "{3} -> Currently hosting {0} playing {1} | {2}".format(
-            name, game, status, nick)
+    hosts = resp_json['hosts']
+    for host in hosts:
+        if host['name'] == channel:
+            target = host['target']
+            target_name = target['channel']['display_name']
+            if not target['meta_game']:
+                playing = ""
+            else:
+                playing = " playing {0}".format(target['meta_game'])
+            title = target['title']
+            return "{0} -> Currently hosting {1}{2} | {3}".format(
+                nick, target_name, playing, title)
     return ""
 
 
