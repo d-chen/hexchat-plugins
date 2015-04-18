@@ -23,20 +23,14 @@ def get_host_info(channel):
     headers = {'accept': 'application/json'}
     resp = requests.get(url, headers=headers)
     return resp
-
-def is_stream_online(resp):
-    if resp['stream']:
-        return True
-    else:
-        return False
-        
+  
 def get_channel_views(channel, nick):
     resp = get_stream_info(channel)
     resp_json = resp.json()
     if not is_valid_resp(resp):
         return "{0} -> Twitch API is not currently available.".format(nick)
     
-    if is_stream_online(resp_json):
+    if resp_json['stream']:
         viewers = resp_json['stream']['viewers']
         return "{1} -> Currently {0} viewers are watching.".format(viewers, nick)
     else:
@@ -81,7 +75,7 @@ def create_twitch_bookmark_title(channel, bookmark_name):
 def create_twitch_bookmark(channel, bookmark_name, nick, password_file):
     """ No API feature -> Automate browser to create TwitchTV bookmark """
     resp = get_stream_info(channel)
-    if not is_stream_online(resp.json()):
+    if not resp.json()['stream']:
         hexchat.command("say {user} -> Stream is not running.".format(user=nick))
         return
 
